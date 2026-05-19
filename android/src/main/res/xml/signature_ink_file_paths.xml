@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+  <!-- Exposes the app's cache directory so signature PNGs written by
+       copyToClipboard() are reachable via content:// URIs. -->
+  <cache-path name="signature-ink-cache" path="." />
+</paths>

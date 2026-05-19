@@ -1,0 +1,19 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!--
+      Library-local FileProvider used by copyToClipboard() to expose the
+      rendered signature PNG as a content:// URI. The `${applicationId}`
+      placeholder is substituted with the consumer app's package name at
+      manifest-merge time, keeping the authority unique per app.
+    -->
+    <provider
+      android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.signatureinkprovider"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/signature_ink_file_paths" />
+    </provider>
+  </application>
+</manifest>
