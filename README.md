@@ -7,9 +7,7 @@ True-native signature capture for React Native. **Zero Skia, zero JS canvas, zer
 
 | iOS | Android |
 | :---: | :---: |
-| ![iOS demo](docs/screenshots/ios.png) | ![Android demo](docs/screenshots/android.png) |
-
-<!-- Screenshots / GIFs to be added. Drop files into docs/screenshots/. -->
+| <video src="https://github.com/user-attachments/assets/296cb656-5614-42d5-b42f-c7c9a656bccb" controls loop muted></video> | <video src="https://github.com/user-attachments/assets/1378bb03-c111-41e8-82a4-8c0db8e5387f" controls loop muted></video> |
 
 ## Why this library
 
