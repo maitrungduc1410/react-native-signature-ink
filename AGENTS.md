@@ -1,6 +1,14 @@
 # AGENTS.md
 
-Operational guide for AI coding agents (and new contributors) working on this repo. Read this in addition to [`README.md`](README.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Operational guide for AI coding agents (and new contributors) working on this repo.
+
+**Read in this order:**
+
+1. This file — operational quick-reference.
+2. [`LESSONS_LEARNED.md`](LESSONS_LEARNED.md) — the narrative behind every gotcha listed below. Several bugs in this repo were "fixed" three or four times before we understood the actual rule; that file is the difference between you re-fixing them again or not. **Read it before you touch view recycling, the tool picker, Android layout, or unit conversion.**
+3. [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the library is structured end-to-end.
+4. [`README.md`](README.md) — public docs.
+5. [`CONTRIBUTING.md`](CONTRIBUTING.md) — workflow conventions.
 
 ## Project overview
 
@@ -71,6 +79,8 @@ The example app's Metro config uses `react-native-monorepo-config`. If you bump 
 
 ## Known gotchas (DO NOT re-learn these)
 
+Each gotcha below is the operational TL;DR. For the full story — symptoms, what we tried that didn't work, the underlying mechanism, and the meta-lesson — see the matching section in [`LESSONS_LEARNED.md`](LESSONS_LEARNED.md).
+
 ### View recycling on iOS — every prop must be reset
 
 Fabric pools `SignatureInkView` instances and may hand the same Obj-C++ object to a different React node on a later mount. The host wrapper ([`ios/SignatureInkView.mm`](ios/SignatureInkView.mm)) resets `_props` to the codegen defaults in `prepareForRecycle`, so the next mount's `updateProps(newProps, oldProps)` diff lands against `oldProps == defaults`. Fabric **skips any setter where `newProps[k] == oldProps[k]`** — meaning any prop whose new value matches the codegen default will never be forwarded to the Swift surface.
@@ -128,6 +138,10 @@ Host apps that call `saveToPhotoLibrary` MUST declare `NSPhotoLibraryAddUsageDes
 ### Photo library export must be opaque
 
 The iOS Photos viewer renders transparent PNGs against its own black chrome — light-themed canvases look inverted in the library. `saveToPhotoLibrary` always renders `opaque: true` (compositing onto `inkBackgroundColor` or white) so the saved asset matches what the user drew.
+
+### Recurring bugs are a smell
+
+If a bug you're about to fix has been fixed before under a different prop name / sibling view / code path, **stop**. Your "fix" is almost certainly partial. Find the actual rule, audit every site that obeys it, and add a `KEEP IN SYNC` comment so the next change doesn't drift. See [`LESSONS_LEARNED.md` §11](LESSONS_LEARNED.md#11-recurring-bugs-are-a-smell) for the bug-fix-then-it-came-back history that produced this rule.
 
 ## PRs / commits
 

@@ -268,54 +268,16 @@ Attaches the system `PKToolPicker` so the user can pick ink type, color, width, 
 
 ## Architecture
 
-The library is split along the codegen line: a TypeScript Fabric spec, two thin host wrappers, and one self-contained native rendering surface per platform.
+The library is split along the codegen line: a TypeScript Fabric spec, two thin host wrappers, and one self-contained native rendering surface per platform — `PKCanvasView` (PencilKit) on iOS, a hand-tuned velocity-Bezier algorithm drawing into an offscreen `Bitmap` on Android.
 
-```
-                              ┌────────────────────────────────────┐
-                              │  src/SignatureInk.tsx              │
-                              │  • Promise/request-id back-channel │
-                              │  • Public types (./types.ts)       │
-                              └────────────────┬───────────────────┘
-                                               │
-                              ┌────────────────▼───────────────────┐
-                              │  src/SignatureInkViewNativeComponent.ts (codegen) │
-                              └─────────────┬──────────────────────┘
-                                            │
-                        ┌───────────────────┴────────────────────┐
-                        ▼                                        ▼
-       ┌────────────────────────────────┐          ┌─────────────────────────────────┐
-       │ ios/SignatureInkView.mm        │          │ android/.../SignatureInkView.kt │
-       │ (Fabric host, prop diff)       │          │ (Fabric host, synchronous layout)│
-       └──────────────┬─────────────────┘          └──────────────┬──────────────────┘
-                      ▼                                            ▼
-       ┌────────────────────────────────┐          ┌─────────────────────────────────┐
-       │ ios/SignatureInkSurface.swift  │          │ android/.../SignatureCanvasView │
-       │ • PKCanvasView (PencilKit)     │          │ • Velocity-Bezier ink algorithm │
-       │ • PKToolPicker                 │          │   (port of gcacace/warting)     │
-       │ • PKDrawing.image(...) export  │          │ • Offscreen Bitmap → PNG/JPEG   │
-       └────────────────────────────────┘          └─────────────────────────────────┘
-```
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full walkthrough (layering diagram, codegen build pipeline, prop-diff flow, ink algorithm, exports, replay loop, view-recycling protocol, publishing setup).
 
-### iOS
+## Further reading
 
-- Strokes are rendered by [`PKCanvasView`](https://developer.apple.com/documentation/pencilkit/pkcanvasview), Apple's first-party ink engine — same one used by Notes and Markup. Pressure, tilt, and azimuth all flow through unchanged.
-- Exports go through `PKDrawing.image(from:scale:)`, forced into a light trait collection so dark-mode hosts don't auto-invert ink in the output.
-- The Fabric host ([`ios/SignatureInkView.mm`](ios/SignatureInkView.mm)) does per-prop diffing and forwards to a Swift surface ([`ios/SignatureInkSurface.swift`](ios/SignatureInkSurface.swift)). The Obj-C++ ↔ Swift split keeps PencilKit types out of the Obj-C++ header (PencilKit isn't visible there).
-- View recycling is explicitly handled: every `@objc public var` is reset to its declared default in `prepareForReuse`, the `PKCanvasView` is replaced (not just `.drawing = …`), and the `PKToolPicker` is force-detached so it doesn't reappear on the next screen.
-
-### Android
-
-- Strokes are rendered by a hand-tuned velocity-Bezier algorithm (port of [gcacace](https://github.com/gcacace/android-signaturepad) via [warting](https://github.com/warting/android-signaturepad)) drawing into an offscreen `Bitmap`. Width tapers with pen speed; the bitmap doubles as the export source so PNG/JPEG/SVG are instant.
-- Pen widths, baseline width, and `baselineOffsetFromBottom` are stored in **dp** internally and converted to raw pixels at every draw site — so a `penMaxWidth={3}` renders at the same physical thickness across 1×/2×/3× densities and matches iOS visually.
-- Layout is performed synchronously on prop change (`applyChildLayout()` measures and positions the canvas + toolbar children directly), because Fabric on Android silently swallows `requestLayout()` calls from native descendants.
-- Clipboard exports go through a bundled `FileProvider` so `content://` URIs can be shared cross-process without `FileUriExposedException`.
-
-### JavaScript
-
-- The codegen spec ([`src/SignatureInkViewNativeComponent.ts`](src/SignatureInkViewNativeComponent.ts)) is the single source of truth for props, commands, and event payload shapes — both platforms generate their Fabric glue from it.
-- The high-level wrapper ([`src/SignatureInk.tsx`](src/SignatureInk.tsx)) owns a request-id ⇄ Promise map: each async command stamps a unique id, the native side echoes it back on the generic `onResult` event, and the wrapper resolves the matching pending Promise. One generic event channel keeps the codegen surface narrow.
-
-For known gotchas, build commands, and contribution conventions, see [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — how every piece fits together.
+- [`LESSONS_LEARNED.md`](LESSONS_LEARNED.md) — bugs we hit while building this and the takeaways we wish we'd known up front. Recommended reading before shipping a similar Fabric-first native RN library.
+- [`AGENTS.md`](AGENTS.md) — operational guide for AI agents and new contributors (gotchas, code style, file map).
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — workflow conventions, scripts, commit format.
 
 ## Contributing
 
