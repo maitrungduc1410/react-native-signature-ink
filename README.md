@@ -2,6 +2,8 @@
 
 True-native signature capture for React Native. **Zero Skia, zero JS canvas, zero WebView.** Buttery-smooth strokes, instant exports, and a clean imperative API — all powered by the platform's own ink engine.
 
+Works with **bare React Native** and **Expo** (via [development builds](https://docs.expo.dev/develop/development-builds/introduction/) / `expo prebuild` — autolinked, no config plugin required; not available in Expo Go).
+
 
 ## Demo
 
@@ -41,7 +43,9 @@ yarn add react-native-signature-ink
 npm install react-native-signature-ink
 ```
 
-### iOS
+> Using Expo? Skip the two sections below and jump to [Expo](#expo).
+
+### iOS (bare React Native)
 
 ```sh
 cd ios && pod install
@@ -54,7 +58,7 @@ If you plan to use `saveToPhotoLibrary`, add the permission key to your host app
 <string>Save your signature to your photo library.</string>
 ```
 
-### Android
+### Android (bare React Native)
 
 No extra setup needed on API 29+. To support `saveToPhotoLibrary` on API ≤ 28, add the legacy storage permission to your host `AndroidManifest.xml`:
 
@@ -66,9 +70,36 @@ No extra setup needed on API 29+. To support `saveToPhotoLibrary` on API ≤ 28,
 
 The library bundles its own `FileProvider` for clipboard support, so you don't need to declare one yourself.
 
+### Expo
+
+Supported in [Expo development builds](https://docs.expo.dev/develop/development-builds/introduction/) and any project that runs `expo prebuild` (Continuous Native Generation). It is autolinked — **no config plugin needed**. It does **not** run in Expo Go, which can't load custom native code.
+
+```sh
+npx expo install react-native-signature-ink
+npx expo prebuild   # or build a dev client / EAS build
+```
+
+This is a New Architecture (Fabric) component, so make sure the New Architecture is enabled. It's on by default on **SDK 52+**; on SDK 51 set `"newArchEnabled": true` in your `app.json`.
+
+For `saveToPhotoLibrary`, declare the iOS permission via `app.json` (don't hand-edit `Info.plist` — prebuild regenerates it):
+
+```json
+{
+  "expo": {
+    "ios": {
+      "infoPlist": {
+        "NSPhotoLibraryAddUsageDescription": "Save your signature to your photo library."
+      }
+    }
+  }
+}
+```
+
+The Android `FileProvider` merges into your app's manifest automatically during prebuild, so clipboard support needs no extra setup. (For `saveToPhotoLibrary` on API ≤ 28 only, add `WRITE_EXTERNAL_STORAGE` via [`expo-build-properties`](https://docs.expo.dev/versions/latest/sdk/build-properties/) or a small config plugin.)
+
 ### Requirements
 
-- React Native **0.75+** (New Architecture / Fabric enabled).
+- React Native **0.75+** (New Architecture / Fabric enabled), or **Expo SDK 51+** with the New Architecture enabled (default on SDK 52+).
 - iOS **13+**.
 - Android **API 24+**.
 
