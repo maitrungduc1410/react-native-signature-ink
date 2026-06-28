@@ -20,6 +20,21 @@ export type {
   StrokeData,
   StrokePoint,
   ToolbarActionEvent,
-  ToolbarButton,
   ToolbarPosition,
 } from './types';
+
+// Toolbar item model + typo-proof id/icon constants and presets.
+export {
+  ToolbarAction,
+  ToolbarIcon,
+  DefaultToolbarItems,
+  DEFAULT_TOOLBAR_BUTTONS,
+} from './toolbar';
+export type {
+  ToolbarActionId,
+  ToolbarIconName,
+  ToolbarItem,
+  ToolbarItemBase,
+  BuiltInToolbarItem,
+  CustomToolbarItem,
+} from './toolbar';

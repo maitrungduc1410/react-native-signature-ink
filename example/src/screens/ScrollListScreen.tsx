@@ -90,7 +90,7 @@ export default function ScrollListScreen() {
               showBaseline
               showToolbar
               toolbarTintColor={tokens.accent}
-              toolbarButtons={['undo', 'clear']}
+              toolbarButtons={[{ id: 'undo' }, { id: 'clear' }]}
               onChange={(e) =>
                 setEmpty((prev) => ({ ...prev, [s.id]: e.isEmpty }))
               }

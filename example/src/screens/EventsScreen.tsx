@@ -38,7 +38,7 @@ export default function EventsScreen() {
           onChange={(e) =>
             push(`onChange  isEmpty=${e.isEmpty}  count=${e.strokeCount}`)
           }
-          onToolbarAction={(e) => push(`onToolbarAction  ${e.action}`)}
+          onToolbarAction={(e) => push(`onToolbarAction  ${e.id}`)}
         />
       </View>
 

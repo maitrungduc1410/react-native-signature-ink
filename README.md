@@ -24,7 +24,7 @@ Most signature libraries on RN either render in JS (slow, jittery) or pull in Sk
 ## Features
 
 - True native rendering on both platforms
-- Built-in toolbar (undo / redo / clear / copy) with configurable layout
+- Built-in toolbar (undo / redo / clear / copy) plus custom icon/text buttons, with an automatic overflow menu
 - PNG / JPEG / SVG export — base64, file URI, photo library, system clipboard
 - Replay animation with configurable speed
 - Round-trippable stroke data (`getStrokeData` / `setStrokeData`)
@@ -172,11 +172,47 @@ All props are optional. Defaults are documented inline in [`src/types.ts`](src/t
 | --- | --- | --- | --- |
 | `showToolbar` | `boolean` | `false` | Render the built-in native toolbar. |
 | `toolbarPosition` | `'top' \| 'bottom'` | `'bottom'` | |
-| `toolbarButtons` | `('undo' \| 'redo' \| 'clear' \| 'copy')[]` | all four | Order is preserved. |
+| `toolbarButtons` | `ToolbarItem[]` | undo / redo / clear / copy | Array of item objects. Order is preserved. See [Toolbar items](#toolbar-items). |
+| `toolbarMaxVisibleButtons` | `number` | `0` | Max inline buttons; extras collapse into an overflow ("…") menu. `0` = compute from available width. |
 | `toolbarBackgroundColor` | `ColorValue` | `transparent` | |
-| `toolbarTintColor` | `ColorValue` | platform accent | Tints SF Symbols (iOS) / vector drawables (Android). |
+| `toolbarTintColor` | `ColorValue` | platform accent | Tints SF Symbols (iOS) / vector drawables (Android). Overridden per-item by `tintColor`. |
 | `toolbarHeight` | `number` | `44` (iOS) / `48` (Android) | |
 | `toolbarIconSpacing` | `number` | `8` | Horizontal gap between buttons. |
+
+#### Toolbar items
+
+Each `toolbarButtons` entry is a `ToolbarItem` object:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | `string` | Built-in ids (`undo` / `redo` / `clear` / `copy`) run native behavior; any other id is a custom, "headless" button that only fires `onToolbarAction`. |
+| `icon` | `ToolbarIconName` | Curated cross-platform icon (`undo`, `redo`, `clear`, `copy`, `save`, `share`, `download`, `check`). Optional when `text` is set. |
+| `text` | `string` | Label. Rendered after the icon when both are present. |
+| `tintColor` | `ColorValue` | Per-item color; falls back to `toolbarTintColor`. |
+| `accessibilityLabel` | `string` | Defaults to `text`, then `id`. |
+| `disabled` | `boolean` | Dim + disable the item. |
+
+Custom items must declare at least one of `icon` or `text` (enforced at compile time). Use the exported `ToolbarAction` / `ToolbarIcon` constants and the `DefaultToolbarItems` presets to avoid typos:
+
+```tsx
+import {
+  SignatureInk,
+  ToolbarAction,
+  ToolbarIcon,
+} from 'react-native-signature-ink';
+
+<SignatureInk
+  showToolbar
+  toolbarButtons={[
+    { id: ToolbarAction.Undo },                          // default icon
+    { id: ToolbarAction.Clear, text: 'Clear' },          // built-in + custom text
+    { id: 'save', icon: ToolbarIcon.Save, text: 'Save' },// custom headless action
+  ]}
+  onToolbarAction={(e) => {
+    if (e.id === 'save') handleSave(); // your own save handler
+  }}
+/>;
+```
 
 ### iOS-only
 
@@ -193,7 +229,7 @@ All props are optional. Defaults are documented inline in [`src/types.ts`](src/t
 | `onEnd` | `() => void` | Finger / pencil up. |
 | `onChange` | `(e: { isEmpty, strokeCount }) => void` | Any drawing change. |
 | `onReplayProgress` | `(e: { progress: number }) => void` | Per-frame while `replay()` runs. |
-| `onToolbarAction` | `(e: { action: 'undo' \| ... }) => void` | After a toolbar button is tapped. |
+| `onToolbarAction` | `(e: { id: string }) => void` | After a toolbar button is tapped (built-in or custom). |
 
 ## Imperative API
 

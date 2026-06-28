@@ -17,8 +17,8 @@ import type {
   SignatureInkHandle,
   SignatureInkProps,
   StrokeData,
-  ToolbarActionEvent,
 } from './types';
+import type { ToolbarItem } from './toolbar';
 
 type NativeRef = React.ComponentRef<typeof SignatureInkNativeView>;
 
@@ -45,6 +45,55 @@ const parseMaybeJson = <T,>(value: string | undefined, fallback: T): T => {
   }
 };
 
+// Dev-only sanity check: a toolbar action is dispatched purely by `id`,
+// so two items sharing an id render two buttons that both fire the same
+// `onToolbarAction({ id })` (and, for a built-in id, run the native action
+// twice) with no way for the handler to tell them apart. Warn once so the
+// collision is caught in development; release builds skip this entirely.
+const warnOnDuplicateToolbarIds = (items: ReadonlyArray<ToolbarItem>): void => {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const { id } of items) {
+    if (seen.has(id)) duplicates.add(id);
+    else seen.add(id);
+  }
+  if (duplicates.size > 0) {
+    const ids = Array.from(duplicates)
+      .map((id) => `"${id}"`)
+      .join(', ');
+    console.warn(
+      `SignatureInk: duplicate toolbarButtons id(s) ${ids}. ` +
+        'Each id should be unique — onToolbarAction is keyed by id and ' +
+        'cannot distinguish duplicate buttons.'
+    );
+  }
+};
+
+// Normalize the public `toolbarButtons` items into the flat JSON shape
+// the native side parses: colors are pre-processed to ints and the
+// accessibility label is derived (text → id) here so neither platform
+// has to. Returns `''` when there are no items, which the native side
+// reads as "use the default undo/redo/clear/copy toolbar".
+const serializeToolbarItems = (
+  items: ReadonlyArray<ToolbarItem> | undefined
+): string => {
+  if (items == null || items.length === 0) return '';
+  if (__DEV__) warnOnDuplicateToolbarIds(items);
+  const normalized = items.map((item) => {
+    const processed =
+      item.tintColor != null ? processColor(item.tintColor) : null;
+    return {
+      id: item.id,
+      icon: item.icon ?? null,
+      text: item.text ?? null,
+      tintColor: typeof processed === 'number' ? processed : null,
+      accessibilityLabel: item.accessibilityLabel ?? item.text ?? item.id,
+      disabled: item.disabled ?? false,
+    };
+  });
+  return JSON.stringify(normalized);
+};
+
 export const SignatureInk = React.forwardRef<
   SignatureInkHandle,
   SignatureInkProps
@@ -57,8 +106,15 @@ export const SignatureInk = React.forwardRef<
     onReplayProgress,
     onToolbarAction,
     backgroundColor,
+    toolbarButtons,
+    toolbarMaxVisibleButtons,
     ...rest
   } = props;
+
+  const toolbarItemsJson = React.useMemo(
+    () => serializeToolbarItems(toolbarButtons),
+    [toolbarButtons]
+  );
 
   const nativeRef = React.useRef<NativeRef>(null);
   const pending = React.useRef<Map<string, PendingResolver>>(new Map());
@@ -225,10 +281,9 @@ export const SignatureInk = React.forwardRef<
     [onReplayProgress]
   );
   const handleToolbarAction = React.useCallback(
-    (event: { nativeEvent: { action: string } }) => {
-      onToolbarAction?.({
-        action: event.nativeEvent.action as ToolbarActionEvent['action'],
-      });
+    (event: { nativeEvent: { itemId?: string; action?: string } }) => {
+      const id = event.nativeEvent.itemId ?? event.nativeEvent.action ?? '';
+      onToolbarAction?.({ id, action: id });
     },
     [onToolbarAction]
   );
@@ -237,6 +292,8 @@ export const SignatureInk = React.forwardRef<
     ...(rest as unknown as NativeProps),
     style,
     inkBackgroundColor: backgroundColor,
+    toolbarItemsJson,
+    toolbarMaxVisibleButtons: toolbarMaxVisibleButtons ?? 0,
     onBegin: handleBegin,
     onEnd: handleEnd,
     onStrokesChange: handleChange,

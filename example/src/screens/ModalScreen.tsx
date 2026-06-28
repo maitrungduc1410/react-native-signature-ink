@@ -123,7 +123,11 @@ export default function ModalScreen() {
                 showBaseline
                 showToolbar
                 toolbarTintColor={tokens.accent}
-                toolbarButtons={['undo', 'redo', 'clear']}
+                toolbarButtons={[
+                  { id: 'undo' },
+                  { id: 'redo' },
+                  { id: 'clear' },
+                ]}
                 onChange={(e) => setEmpty(e.isEmpty)}
               />
             </View>

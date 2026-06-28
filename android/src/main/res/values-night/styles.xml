@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!--
+    Dark-mode variant of the overflow PopupMenu style. Parented on the dark
+    Material popup so item text stays legible; the background drawable already
+    adapts via ?android:attr/colorBackgroundFloating. The ThemeOverlay in
+    values/ references this style by name, so it resolves automatically in
+    night mode.
+  -->
+  <style name="Widget.SignatureInk.PopupMenu" parent="@android:style/Widget.Material.PopupMenu">
+    <item name="android:popupBackground">@drawable/signature_ink_popup_background</item>
+    <item name="android:popupElevation">4dp</item>
+  </style>
+</resources>

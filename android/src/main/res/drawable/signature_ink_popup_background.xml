@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Rounded background for the toolbar overflow PopupMenu.
+
+  The rounded shape is wrapped in an <inset> so the popup window reserves a
+  transparent margin on every side. The system draws the popup's elevation
+  shadow into that margin instead of clipping it at the surface edge (which is
+  what happens with a plain shape that fills the whole window). Pair this with
+  a modest popupElevation in styles.xml for a soft, native-looking shadow.
+
+  Uses ?android:attr/colorBackgroundFloating so it adapts to light / dark.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="8dp"
+    android:insetTop="8dp"
+    android:insetRight="8dp"
+    android:insetBottom="8dp">
+  <shape android:shape="rectangle">
+    <solid android:color="?android:attr/colorBackgroundFloating" />
+    <corners android:radius="12dp" />
+    <padding
+        android:top="4dp"
+        android:bottom="4dp" />
+  </shape>
+</inset>

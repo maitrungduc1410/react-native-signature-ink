@@ -41,6 +41,12 @@ interface ReplayProgressPayload {
 
 /** Payload for `onToolbarAction`. */
 interface ToolbarActionPayload {
+  /**
+   * The tapped item's id. Named `itemId` on the wire (not `id`) to avoid
+   * clashing with the Objective-C `id` keyword in the generated C++.
+   */
+  itemId: string;
+  /** @deprecated Alias of `itemId`, kept for one release. */
   action: string;
 }
 
@@ -113,8 +119,19 @@ export interface NativeProps extends ViewProps {
   showToolbar?: WithDefault<boolean, false>;
   /** `'top'` | `'bottom'` */
   toolbarPosition?: WithDefault<string, 'bottom'>;
-  /** Subset of `'undo' | 'redo' | 'clear' | 'copy'`. */
-  toolbarButtons?: ReadonlyArray<string>;
+  /**
+   * JSON-serialized array of toolbar item objects (the high-level
+   * wrapper maps the public `toolbarButtons` prop onto this). Each entry
+   * is `{ id, icon?, text?, tintColor?, accessibilityLabel, disabled }`,
+   * where `tintColor` is a processed color int. An empty string means
+   * "use the default undo/redo/clear/copy toolbar".
+   */
+  toolbarItemsJson?: WithDefault<string, ''>;
+  /**
+   * Hard cap on inline buttons; extras collapse into an overflow menu.
+   * `0` means "compute from available width at layout time".
+   */
+  toolbarMaxVisibleButtons?: WithDefault<Int32, 0>;
   /** Toolbar background fill. */
   toolbarBackgroundColor?: ColorValue;
   /** Toolbar icon tint (SF Symbols on iOS, vector drawables on Android). */

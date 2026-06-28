@@ -1,4 +1,5 @@
 import type { ColorValue } from 'react-native';
+import type { ToolbarItem } from './toolbar';
 
 /**
  * Image format used by all raster export commands (`toBase64`, `toFile`,
@@ -10,12 +11,6 @@ import type { ColorValue } from 'react-native';
  *   ink before encoding.
  */
 export type ExportFormat = 'png' | 'jpeg';
-
-/**
- * Identifiers for the built-in toolbar buttons rendered natively when
- * `showToolbar` is enabled. Order is preserved exactly as given.
- */
-export type ToolbarButton = 'undo' | 'redo' | 'clear' | 'copy';
 
 /**
  * Where the built-in toolbar attaches inside the signature view.
@@ -113,11 +108,18 @@ export interface ReplayProgressEvent {
 
 /**
  * Payload for the `onToolbarAction` callback that fires whenever the
- * user taps one of the built-in toolbar buttons (after the action
- * has already been applied to the canvas).
+ * user taps a toolbar button. For built-in items (`undo` / `redo` /
+ * `clear` / `copy`) the native action has already been applied to the
+ * canvas; custom items only fire this event.
  */
 export interface ToolbarActionEvent {
-  action: ToolbarButton;
+  /** The tapped item's `id` (built-in action id or any custom id). */
+  id: string;
+  /**
+   * @deprecated Alias of {@link ToolbarActionEvent.id}, kept for one
+   * release for backward compatibility. Use `id` instead.
+   */
+  action: string;
 }
 
 /**
@@ -258,10 +260,27 @@ export interface SignatureInkProps {
   /** Toolbar anchor edge. Defaults to `'bottom'`. */
   toolbarPosition?: ToolbarPosition;
   /**
-   * Which buttons to show, in the order they appear. Defaults to
-   * `['undo', 'redo', 'clear', 'copy']`. Pass a subset to hide buttons.
+   * The toolbar buttons, in the order they appear. Each entry is a
+   * {@link ToolbarItem} object. Built-in ids (`undo` / `redo` / `clear`
+   * / `copy`) carry native behavior and a default icon; any other id is
+   * a custom, "headless" button that only fires `onToolbarAction` and
+   * must declare an `icon` and/or `text`. Defaults to
+   * {@link DEFAULT_TOOLBAR_BUTTONS}.
+   *
+   * @example
+   * toolbarButtons={[
+   *   { id: ToolbarAction.Undo },
+   *   { id: ToolbarAction.Clear, text: 'Clear' },
+   *   { id: 'save', icon: ToolbarIcon.Save, text: 'Save' },
+   * ]}
    */
-  toolbarButtons?: ReadonlyArray<ToolbarButton>;
+  toolbarButtons?: ReadonlyArray<ToolbarItem>;
+  /**
+   * Hard cap on the number of buttons rendered inline; any beyond this
+   * collapse into an overflow ("…") menu. When omitted (or `0`), the
+   * visible count is computed at layout time from the available width.
+   */
+  toolbarMaxVisibleButtons?: number;
   /** Toolbar fill color. Defaults to transparent. */
   toolbarBackgroundColor?: ColorValue;
   /**

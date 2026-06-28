@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!--
+    Styling for the toolbar overflow PopupMenu. We override only the popup
+    background + elevation on top of the platform Material popup so the menu
+    feels native (correct item layout, ripples, text appearance) while
+    gaining rounded corners and a clean elevation shadow. The night variant
+    lives in values-night/. Applied via a ThemeOverlay + ContextThemeWrapper
+    so it never leaks onto the host app's own menus.
+  -->
+  <style name="Widget.SignatureInk.PopupMenu" parent="@android:style/Widget.Material.Light.PopupMenu">
+    <item name="android:popupBackground">@drawable/signature_ink_popup_background</item>
+    <item name="android:popupElevation">4dp</item>
+  </style>
+
+  <style name="ThemeOverlay.SignatureInk.PopupMenu" parent="">
+    <item name="android:popupMenuStyle">@style/Widget.SignatureInk.PopupMenu</item>
+  </style>
+</resources>

@@ -79,7 +79,7 @@ Adding or removing a prop / command starts here.
 `SignatureInk` is the recommended consumer-facing component. It does two things on top of the raw codegen view:
 
 1. **Exposes a typed imperative API via `ref`.** Methods like `toBase64`, `toFile`, `replay`, `getStrokeData`, `saveToPhotoLibrary` are surfaced as Promise-returning functions (see [Async API plumbing](#async-api-plumbing) below).
-2. **Reshapes event payloads.** Native fires `onStrokesChange` (named that way to dodge the reserved RN `topChange`); the wrapper rewrites it as the public `onChange({ isEmpty, strokeCount })`. Same for `onResult` (internal Promise back-channel; never exposed) and `onToolbarAction` (string → typed `ToolbarButton` union).
+2. **Reshapes event payloads.** Native fires `onStrokesChange` (named that way to dodge the reserved RN `topChange`); the wrapper rewrites it as the public `onChange({ isEmpty, strokeCount })`. Same for `onResult` (internal Promise back-channel; never exposed) and `onToolbarAction` (native `itemId` → public `{ id }`). The wrapper also serializes the public `toolbarButtons` item objects into the `toolbarItemsJson` native prop.
 
 ### Public types — [`src/types.ts`](src/types.ts)
 
@@ -107,7 +107,7 @@ The Obj-C++ host is split from the Swift surface because **PencilKit isn't visib
 `SignatureInkSurface: UIView` is the single class that owns everything. Subviews:
 
 - A `PKCanvasView` — Apple's PencilKit ink engine. Pinned to `overrideUserInterfaceStyle = .light` so user-set ink colors render literally regardless of host theme.
-- An optional `UIStackView` toolbar (built by `rebuildToolbar`, rebuilt on `showToolbar` / `toolbarButtons` changes only).
+- An optional `UIStackView` toolbar (built by `rebuildToolbarForWidth` during layout; splits items into an inline run plus an overflow "…" menu based on the available width).
 - An optional `CAShapeLayer` baseline (rebuilt on `showBaseline` / style changes).
 - A process-wide static `PKToolPicker` — see [View recycling](#view-recycling) for why it's shared.
 
@@ -133,9 +133,9 @@ PencilKit doesn't expose stroke geometry in a vector-friendly way, so SVG is bui
 
 A `FrameLayout` that contains a `SignatureCanvasView` and an optional `LinearLayout` toolbar. Responsibilities:
 
-- **Setter façade.** The view manager calls setters here (`setShowToolbar`, `setToolbarPosition`, `setToolbarButtons`, `setToolbarHeight`, …). Each setter does its job and then calls `applyChildLayout()` so the change is reflected in the very next frame. We do **not** rely on `requestLayout()` — see [View recycling](#view-recycling) and [`LESSONS_LEARNED.md`](LESSONS_LEARNED.md#android-fabric-eats-requestlayout).
+- **Setter façade.** The view manager calls setters here (`setShowToolbar`, `setToolbarPosition`, `setToolbarItemsJson`, `setToolbarMaxVisibleButtons`, `setToolbarHeight`, …). Each setter does its job and then calls `applyChildLayout()` so the change is reflected in the very next frame. We do **not** rely on `requestLayout()` — see [View recycling](#view-recycling) and [`LESSONS_LEARNED.md`](LESSONS_LEARNED.md#android-fabric-eats-requestlayout).
 - **Baseline anchor logic.** `syncBaselineAnchor()` picks one of `OFFSET_FROM_BOTTOM`, `TOP_EDGE`, `BOTTOM_EDGE` based on toolbar visibility/position so the baseline always sits flush against the toolbar edge.
-- **Toolbar build.** `rebuildToolbar()` constructs `ImageButton`s from XML vector drawables (`arrow_uturn_backward`, etc. — SF-Symbol-derived for visual parity with iOS). Tint, spacing, and background are applied in place.
+- **Toolbar build.** `populateToolbar(width)` constructs item views (`ImageButton` for icon-only, `Button` for text / icon+text) from XML vector drawables (`arrow_uturn_backward`, `save`, etc. — SF-Symbol-derived for visual parity with iOS), splitting them into an inline run plus an overflow `PopupMenu` based on the available width. Custom (non-built-in) ids only fire `onToolbarAction`.
 
 ### View manager — [`android/.../SignatureInkViewManager.kt`](android/src/main/java/com/signatureink/SignatureInkViewManager.kt)
 

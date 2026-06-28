@@ -19,6 +19,7 @@ Each section follows the same shape: **symptom → root cause → fix → genera
 - [11. Recurring bugs are a smell](#11-recurring-bugs-are-a-smell)
 - [12. Build-system papercuts we'd save you from](#12-build-system-papercuts-wed-save-you-from)
 - [13. API design lessons](#13-api-design-lessons)
+- [14. Android toolbar at runtime: stale rebuilds and lying measurements](#14-android-toolbar-at-runtime-stale-rebuilds-and-lying-measurements)
 
 ---
 
@@ -118,6 +119,8 @@ A related variant: the **tool picker** also produces trait-adaptive ink. When th
 **Fix:** Synchronous layout. The custom parent (`SignatureInkView`) owns its children's positioning explicitly via `child.measure(...)` + `child.layout(...)` calls. Initial mount still flows through Yoga via the `onMeasure`/`onLayout` overrides; everything else runs synchronously in setters.
 
 **Generalised lesson:** Fabric on Android is not a forgiving "drop your custom ViewGroup in and it'll work" environment. If your component's internal layout depends on prop changes (not just on Yoga-computed outer bounds), don't try to push them up through `requestLayout()` — own the layout pass yourself. The synchronous-from-setter pattern is also easier to reason about and easier to debug than chasing layout passes that may or may not run.
+
+> **Update:** the "no `requestLayout()`, no posted runnable" conclusion turned out to be too absolute — synchronous-from-setter has a hole when a prop update lands *before* the view has a size. We later re-introduced a posted `measureAndLayout` as a safety net; see [§14a](#14-android-toolbar-at-runtime-stale-rebuilds-and-lying-measurements).
 
 ## 7. The dp/px unit trap on Android
 
@@ -225,6 +228,31 @@ A few decisions we'd revisit:
 
 - **Padding the showcase screen for the iOS tool picker.** The picker covers the bottom ~220pt of the screen. We added 260pt of bottom padding when the picker is on. A more correct solution would be a `PKToolPickerObserver` callback into JS exposing the picker's actual frame, but the demo-app-only nature of the problem made the hard-coded padding pragmatic. If we ship a `<SignatureInk />` that needs to render content under the picker in a real app, we'd build the observer wiring.
 - **No watermark support in v1.** The natural design (React children inside `<SignatureInk>{children}</SignatureInk>`, positioned `absolute`, `pointerEvents="box-none"` overlay) is easy. The hard part is whether watermarks should be **burned into exports** — which requires either ViewShot snapshotting or per-platform native image compositing. We deferred this until there's a concrete enterprise use case to design against, rather than picking the wrong shape and being stuck with it.
+
+## 14. Android toolbar at runtime: stale rebuilds and lying measurements
+
+Adding the object-based toolbar (icons + text labels + an overflow menu) reopened the Android layout box from §6. It split into two independent root causes that both presented as "the Android toolbar looks wrong while iOS is fine."
+
+### 14a. Runtime prop changes didn't relayout the toolbar
+
+**Symptom:** Toggle "Text labels" on. iOS rebuilds the bar — labels appear, the overflow recomputes. Android does nothing: the old icon-only bar stays, and the overflow menu still lists the pre-toggle items. Setting `showText` to `true` by default didn't help either.
+
+**Root cause:** §6's "synchronous `applyChildLayout()` from every setter" approach has a hole — `applyChildLayout()` early-returns when `width <= 0`. Under Fabric a prop update can arrive *before* the view has been laid out, and because `invalidateToolbar()` only bumped a revision counter (no layout request), nothing rescheduled the rebuild — so the change was silently dropped and the stale toolbar (plus its captured overflow snapshot) stayed on screen. iOS never had this hole because its `invalidateToolbar()` calls `setNeedsLayout()`, and UIKit *guarantees* a later `layoutSubviews()`.
+
+**Fix:** Give Android the same guarantee. `invalidateToolbar()` now also calls `requestLayout()`, and a `requestLayout()` override posts a single `measureAndLayout` runnable — `measure(EXACTLY width/height)` + `layout(left, top, right, bottom)` — for the next frame. The synchronous `applyChildLayout()` stays as the no-flicker fast path; the posted pass is the safety net for the size-still-0 case. This walks back §6's "no posted runnable" verdict: the posted pass *is* reliable as long as it measures with the resolved `EXACTLY` size and is guarded against the `width == 0` frames (skip, don't measure with `0`), rather than reusing stale cached `MeasureSpec`s.
+
+### 14b. Off-screen measurement under- and over-counted button widths
+
+**Symptom:** With labels on, the bar overflows *and* clips — the leftmost button ("Undo") is cut off — even though an overflow "…" is already showing. With icons only, an overflow "…" appears when everything plainly fits.
+
+**Root cause:** The visible/overflow split is computed from each button's width, measured off-screen before the view is attached. Two ways that measurement lied:
+
+1. Text buttons set their icon with `setCompoundDrawablesRelativeWithIntrinsicBounds`. **Relative (start/end) compound drawables aren't resolved to left/right until the view's layout direction is resolved** — which hasn't happened for a detached view. So `measure()` omitted the icon width; the capacity math under-counted each labeled button, packed too many inline, and the bar clipped.
+2. Icon-only items are laid out in a fixed 44×44 box, but their footprint was read from `measuredWidth` — and a plain `ImageButton` over-reports width (default padding / intrinsic drawable size), so the math over-counted and triggered a spurious overflow.
+
+**Fix:** Make each item's estimated footprint equal what it will actually occupy. Use the absolute `setCompoundDrawablesWithIntrinsicBounds` so the off-screen `measure()` includes the icon (matching iOS's `intrinsicContentSize`; icon stays leading), and use the fixed `slot` width for icon-only items instead of measuring them at all.
+
+**Generalised lesson:** Overflow/capacity math is only as good as the widths you feed it, and an off-screen `measure()` is not the same as the on-screen layout. Anything that resolves lazily on attach (RTL-relative drawables, themed paddings, layout-direction-dependent insets) will be missing or wrong at measure time. Either measure the value the way it will actually be laid out, or — better — derive the footprint from the layout rule you already committed to: a fixed-box child is exactly its box; only `WRAP_CONTENT` children need measuring. And when one platform's intrinsic-size API "just works," port its *result*, not its mechanism.
 
 ---
 

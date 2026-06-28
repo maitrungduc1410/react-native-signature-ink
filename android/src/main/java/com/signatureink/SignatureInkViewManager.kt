@@ -71,8 +71,12 @@ internal class SignatureInkViewManager :
       }
       dispatch(view, EVENT_REPLAY_PROGRESS, payload)
     }
-    view.onToolbarAction = { action ->
-      val payload = Arguments.createMap().apply { putString("action", action) }
+    view.onToolbarAction = { id ->
+      val payload = Arguments.createMap().apply {
+        putString("itemId", id)
+        // Deprecated alias, kept for one release.
+        putString("action", id)
+      }
       dispatch(view, EVENT_TOOLBAR_ACTION, payload)
     }
 
@@ -152,15 +156,14 @@ internal class SignatureInkViewManager :
     view?.setToolbarPosition(value ?: "bottom")
   }
 
-  @ReactProp(name = "toolbarButtons")
-  override fun setToolbarButtons(view: SignatureInkView?, value: ReadableArray?) {
-    val list = mutableListOf<String>()
-    if (value != null) {
-      for (i in 0 until value.size()) {
-        value.getString(i)?.let { list.add(it) }
-      }
-    }
-    view?.setToolbarButtons(list)
+  @ReactProp(name = "toolbarItemsJson")
+  override fun setToolbarItemsJson(view: SignatureInkView?, value: String?) {
+    view?.setToolbarItemsJson(value)
+  }
+
+  @ReactProp(name = "toolbarMaxVisibleButtons")
+  override fun setToolbarMaxVisibleButtons(view: SignatureInkView?, value: Int) {
+    view?.setToolbarMaxVisibleButtons(value)
   }
 
   @ReactProp(name = "toolbarBackgroundColor")

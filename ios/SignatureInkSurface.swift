@@ -74,19 +74,29 @@ import UniformTypeIdentifiers
   }
 
   @objc public var showToolbar: Bool = false {
-    didSet { rebuildToolbar() }
+    didSet { invalidateToolbar() }
   }
   @objc public var toolbarPosition: NSString = "bottom" {
     didSet { setNeedsLayout() }
   }
-  @objc public var toolbarButtons: [String] = ["undo", "redo", "clear", "copy"] {
-    didSet { rebuildToolbar() }
+  /// JSON array of toolbar items forwarded by the JS wrapper. Parsed
+  /// into `toolbarItems`; an empty string means "default toolbar".
+  @objc public var toolbarItemsJson: NSString = "" {
+    didSet {
+      toolbarItems = SignatureInkSurface.parseToolbarItems(toolbarItemsJson as String)
+      invalidateToolbar()
+    }
+  }
+  /// Hard cap on inline buttons; extras collapse into the overflow menu.
+  /// `0` = compute the visible count from the available width.
+  @objc public var toolbarMaxVisibleButtons: Int = 0 {
+    didSet { invalidateToolbar() }
   }
   @objc public var toolbarBackgroundColor: UIColor? {
     didSet { toolbar?.layer.backgroundColor = (toolbarBackgroundColor ?? .clear).cgColor }
   }
   @objc public var toolbarTintColor: UIColor? {
-    didSet { rebuildToolbar() }
+    didSet { invalidateToolbar() }
   }
   /// Toolbar height in points. Drives the symmetric vertical gap above
   /// and below the icons (= `(toolbarHeight - iconVisualHeight) / 2`).
@@ -95,9 +105,33 @@ import UniformTypeIdentifiers
   }
   /// Horizontal gap between adjacent toolbar buttons.
   @objc public var toolbarIconSpacing: CGFloat = 8 {
-    didSet {
-      if let stack = toolbar { stack.spacing = toolbarIconSpacing }
-    }
+    didSet { invalidateToolbar() }
+  }
+
+  // Parsed toolbar items + the overflow-aware layout cache. The visible
+  // / overflow split is computed in `layoutSubviews` (where the width is
+  // known) and rebuilt only when the items or width actually change, so
+  // there's no render-then-trim flicker.
+  private var toolbarItems: [ToolbarItemModel] = SignatureInkSurface.defaultToolbarItems()
+  private var toolbarRevision: Int = 0
+  private var builtToolbarRevision: Int = -1
+  private var builtToolbarWidth: CGFloat = -1
+
+  /// One uniform overflow ("…") slot width used in the capacity math.
+  private let overflowButtonWidth: CGFloat = 44
+
+  struct ToolbarItemModel {
+    let id: String
+    let icon: String?
+    let text: String?
+    let tintColor: UIColor?
+    let accessibilityLabel: String
+    let disabled: Bool
+  }
+
+  private func invalidateToolbar() {
+    toolbarRevision += 1
+    setNeedsLayout()
   }
 
   @objc public var showToolPicker: Bool = false {
@@ -269,7 +303,8 @@ import UniformTypeIdentifiers
     // Toolbar.
     showToolbar = false
     toolbarPosition = "bottom"
-    toolbarButtons = ["undo", "redo", "clear", "copy"]
+    toolbarItemsJson = ""
+    toolbarMaxVisibleButtons = 0
     toolbarBackgroundColor = nil
     toolbarTintColor = nil
     toolbarHeight = 44
@@ -313,6 +348,23 @@ import UniformTypeIdentifiers
 
   public override func layoutSubviews() {
     super.layoutSubviews()
+
+    // Build (or refresh) the toolbar's visible / overflow split now that
+    // the width is known. Recompute only when the items or width change
+    // so the very first on-screen frame is already correct (no flicker).
+    if showToolbar {
+      let availW = bounds.width
+      if toolbar == nil
+        || toolbarRevision != builtToolbarRevision
+        || abs(availW - builtToolbarWidth) > 0.5 {
+        rebuildToolbarForWidth(availW)
+        builtToolbarRevision = toolbarRevision
+        builtToolbarWidth = availW
+      }
+    } else if toolbar != nil {
+      toolbar?.removeFromSuperview()
+      toolbar = nil
+    }
 
     // Icons stay anchored to the bottom edge and don't shift when
     // `showBaseline` toggles. With the auto-anchored baseline (at the
@@ -402,16 +454,74 @@ import UniformTypeIdentifiers
 
   // MARK: - Toolbar
 
-  private func rebuildToolbar() {
+  private static let builtInIds: Set<String> = ["undo", "redo", "clear", "copy"]
+
+  private static func defaultToolbarItems() -> [ToolbarItemModel] {
+    return [
+      ToolbarItemModel(id: "undo", icon: "undo", text: nil, tintColor: nil, accessibilityLabel: "Undo", disabled: false),
+      ToolbarItemModel(id: "redo", icon: "redo", text: nil, tintColor: nil, accessibilityLabel: "Redo", disabled: false),
+      ToolbarItemModel(id: "clear", icon: "clear", text: nil, tintColor: nil, accessibilityLabel: "Clear", disabled: false),
+      ToolbarItemModel(id: "copy", icon: "copy", text: nil, tintColor: nil, accessibilityLabel: "Copy", disabled: false),
+    ]
+  }
+
+  /// Convert a React-processed ARGB int (alpha in the high byte) to a
+  /// `UIColor`. Uses 64-bit width so values > 0x7FFFFFFF don't overflow.
+  private static func colorFromARGB(_ value: Int64) -> UIColor {
+    let argb = UInt32(truncatingIfNeeded: value)
+    let a = CGFloat((argb >> 24) & 0xFF) / 255.0
+    let r = CGFloat((argb >> 16) & 0xFF) / 255.0
+    let g = CGFloat((argb >> 8) & 0xFF) / 255.0
+    let b = CGFloat(argb & 0xFF) / 255.0
+    return UIColor(red: r, green: g, blue: b, alpha: a)
+  }
+
+  private static func parseToolbarItems(_ json: String) -> [ToolbarItemModel] {
+    guard !json.isEmpty,
+          let data = json.data(using: .utf8),
+          let array = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]]
+    else {
+      return defaultToolbarItems()
+    }
+    var items: [ToolbarItemModel] = []
+    for obj in array {
+      guard let id = obj["id"] as? String, !id.isEmpty else { continue }
+      let icon = obj["icon"] as? String
+      let text = obj["text"] as? String
+      var tint: UIColor?
+      if let n = obj["tintColor"] as? NSNumber { tint = colorFromARGB(n.int64Value) }
+      let label = (obj["accessibilityLabel"] as? String) ?? text ?? id
+      let disabled = (obj["disabled"] as? Bool) ?? false
+      items.append(ToolbarItemModel(id: id, icon: icon, text: text, tintColor: tint, accessibilityLabel: label, disabled: disabled))
+    }
+    return items.isEmpty ? defaultToolbarItems() : items
+  }
+
+  private func sfSymbolName(_ icon: String) -> String {
+    switch icon {
+    case "undo": return "arrow.uturn.backward"
+    case "redo": return "arrow.uturn.forward"
+    case "clear": return "trash"
+    case "copy": return "doc.on.doc"
+    case "save": return "square.and.arrow.down"
+    case "share": return "square.and.arrow.up"
+    case "download": return "arrow.down.circle"
+    case "check": return "checkmark"
+    default: return "questionmark"
+    }
+  }
+
+  /// Build the bar for the given width, splitting items into an inline
+  /// run plus an overflow ("…") menu. Pure-arithmetic capacity (uniform
+  /// 44pt icon slot + measured intrinsic width for text) keeps it a
+  /// single pass with no flicker.
+  private func rebuildToolbarForWidth(_ totalWidth: CGFloat) {
     toolbar?.removeFromSuperview()
     toolbar = nil
-    guard showToolbar else { setNeedsLayout(); return }
+    guard showToolbar else { return }
 
     let stack = UIStackView()
     stack.axis = .horizontal
-    // Vertical center within the fixed-height bar; horizontally
-    // `.fill` + a flexible leading spacer right-aligns the icons
-    // (matches Android `Gravity.END | CENTER_VERTICAL`).
     stack.alignment = .center
     stack.distribution = .fill
     stack.spacing = toolbarIconSpacing
@@ -419,44 +529,109 @@ import UniformTypeIdentifiers
     stack.isLayoutMarginsRelativeArrangement = true
     stack.layer.backgroundColor = (toolbarBackgroundColor ?? .clear).cgColor
 
+    // Flexible leading spacer right-aligns the cluster (matches Android
+    // `Gravity.END | CENTER_VERTICAL`).
     let spacer = UIView()
     spacer.translatesAutoresizingMaskIntoConstraints = false
     spacer.setContentHuggingPriority(.defaultLow - 1, for: .horizontal)
     spacer.setContentCompressionResistancePriority(.defaultLow - 1, for: .horizontal)
     stack.addArrangedSubview(spacer)
 
-    for name in toolbarButtons {
-      stack.addArrangedSubview(makeToolbarButton(action: name))
+    // Build + measure every item once (off-screen via intrinsicContentSize).
+    let built: [(view: UIButton, width: CGFloat)] = toolbarItems.map { item in
+      let b = makeToolbarButton(item: item)
+      let w = max(44, ceil(b.intrinsicContentSize.width))
+      return (b, w)
+    }
+
+    let n = built.count
+    let available = max(0, totalWidth - 32) // 16pt margin each side
+    let spacing = toolbarIconSpacing
+
+    // Conservative width estimate (over-counts one spacing for the spacer
+    // gap, so we never push a button off-screen).
+    func needed(_ count: Int, withOverflow: Bool) -> CGFloat {
+      var sum: CGFloat = 0
+      for i in 0..<count { sum += built[i].width }
+      if withOverflow { sum += overflowButtonWidth }
+      let views = count + (withOverflow ? 1 : 0)
+      if views > 0 { sum += spacing * CGFloat(views) }
+      return sum
+    }
+
+    var visibleCount = n
+    var overflow = false
+    let cap = toolbarMaxVisibleButtons
+    let capLimited = cap > 0 && cap < n
+
+    if available > 0 {
+      if !capLimited && needed(n, withOverflow: false) <= available {
+        visibleCount = n
+      } else {
+        overflow = true
+        var k = 0
+        while k < n && needed(k + 1, withOverflow: true) <= available { k += 1 }
+        if cap > 0 { k = min(k, cap) }
+        visibleCount = max(0, k)
+      }
+    } else if capLimited {
+      // Width unknown yet: honor the explicit cap only.
+      overflow = true
+      visibleCount = cap
+    }
+
+    for i in 0..<visibleCount { stack.addArrangedSubview(built[i].view) }
+    if overflow && visibleCount < n {
+      let rest = Array(toolbarItems[visibleCount..<n])
+      stack.addArrangedSubview(makeOverflowButton(items: rest))
     }
 
     addSubview(stack)
     toolbar = stack
-    setNeedsLayout()
   }
 
-  private func makeToolbarButton(action: String) -> UIButton {
-    let symbol: String
-    switch action {
-    case "undo": symbol = "arrow.uturn.backward"
-    case "redo": symbol = "arrow.uturn.forward"
-    case "copy": symbol = "doc.on.doc"
-    case "clear": symbol = "trash"
-    default: symbol = "questionmark"
-    }
+  private func makeToolbarButton(item: ToolbarItemModel) -> UIButton {
     let button = UIButton(type: .system)
-    if #available(iOS 13.0, *) {
-      let config = UIImage.SymbolConfiguration(pointSize: 15, weight: .regular)
-      button.setImage(UIImage(systemName: symbol, withConfiguration: config), for: .normal)
-    } else {
-      button.setTitle(action, for: .normal)
+
+    // Built-in items with neither icon nor text fall back to their
+    // default icon (which shares the id's name).
+    var iconName = item.icon
+    if iconName == nil && item.text == nil && SignatureInkSurface.builtInIds.contains(item.id) {
+      iconName = item.id
     }
-    if let tint = toolbarTintColor { button.tintColor = tint }
-    button.accessibilityLabel = action
-    button.accessibilityIdentifier = "signature-ink-\(action)"
+    let hasText = (item.text?.isEmpty == false)
+
+    if let iconName, #available(iOS 13.0, *) {
+      let config = UIImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+      button.setImage(UIImage(systemName: sfSymbolName(iconName), withConfiguration: config), for: .normal)
+    }
+    if hasText {
+      button.setTitle(item.text, for: .normal)
+      button.titleLabel?.font = .systemFont(ofSize: 15)
+    }
+
+    // Spacing/insets. `contentEdgeInsets`/`imageEdgeInsets` are the
+    // broadly-supported path (iOS 13+); deprecation on iOS 15 is benign.
+    if iconName != nil && hasText {
+      let pad: CGFloat = 6
+      button.imageEdgeInsets = UIEdgeInsets(top: 0, left: -pad / 2, bottom: 0, right: pad / 2)
+      button.titleEdgeInsets = UIEdgeInsets(top: 0, left: pad / 2, bottom: 0, right: -pad / 2)
+      button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 8 + pad / 2, bottom: 0, right: 8 + pad / 2)
+    } else {
+      button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
+    }
+
+    if let tint = item.tintColor ?? toolbarTintColor { button.tintColor = tint }
+    button.isEnabled = !item.disabled
+    button.alpha = item.disabled ? 0.4 : 1.0
+    button.accessibilityLabel = item.accessibilityLabel
+    button.accessibilityIdentifier = "signature-ink-\(item.id)"
     button.translatesAutoresizingMaskIntoConstraints = false
     button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
     button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
-    let target = ToolbarButtonTarget(action: action) { [weak self] act in
+
+    let id = item.id
+    let target = ToolbarButtonTarget(action: id) { [weak self] act in
       self?.handleToolbarAction(act)
     }
     button.addTarget(target, action: #selector(ToolbarButtonTarget.fire), for: .touchUpInside)
@@ -469,15 +644,73 @@ import UniformTypeIdentifiers
     return button
   }
 
-  private func handleToolbarAction(_ action: String) {
-    switch action {
+  /// The trailing "…" button. Taps open a native menu (iOS 14+) or an
+  /// action sheet listing the collapsed items.
+  private func makeOverflowButton(items: [ToolbarItemModel]) -> UIButton {
+    let button = UIButton(type: .system)
+    if #available(iOS 13.0, *) {
+      let config = UIImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+      button.setImage(UIImage(systemName: "ellipsis", withConfiguration: config), for: .normal)
+    } else {
+      button.setTitle("…", for: .normal)
+    }
+    if let tint = toolbarTintColor { button.tintColor = tint }
+    button.accessibilityLabel = "More"
+    button.accessibilityIdentifier = "signature-ink-overflow"
+    button.translatesAutoresizingMaskIntoConstraints = false
+    button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+    button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+
+    if #available(iOS 14.0, *) {
+      let actions: [UIAction] = items.map { item in
+        var image: UIImage?
+        if let icon = item.icon ?? (SignatureInkSurface.builtInIds.contains(item.id) ? item.id : nil) {
+          image = UIImage(systemName: sfSymbolName(icon))
+        }
+        return UIAction(
+          title: item.accessibilityLabel,
+          image: image,
+          attributes: item.disabled ? [.disabled] : []
+        ) { [weak self] _ in
+          self?.handleToolbarAction(item.id)
+        }
+      }
+      button.menu = UIMenu(title: "", children: actions)
+      button.showsMenuAsPrimaryAction = true
+    } else {
+      let target = ToolbarButtonTarget(action: "") { [weak self] _ in
+        self?.presentOverflowSheet(items: items)
+      }
+      button.addTarget(target, action: #selector(ToolbarButtonTarget.fire), for: .touchUpInside)
+      objc_setAssociatedObject(button, &ToolbarButtonTarget.assocKey, target, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    return button
+  }
+
+  private func presentOverflowSheet(items: [ToolbarItemModel]) {
+    let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+    for item in items where !item.disabled {
+      sheet.addAction(UIAlertAction(title: item.accessibilityLabel, style: .default) { [weak self] _ in
+        self?.handleToolbarAction(item.id)
+      })
+    }
+    sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    var responder: UIResponder? = self
+    while let next = responder?.next {
+      if let vc = next as? UIViewController { vc.present(sheet, animated: true); return }
+      responder = next
+    }
+  }
+
+  private func handleToolbarAction(_ id: String) {
+    switch id {
     case "undo": undo()
     case "redo": redo()
     case "clear": clear()
     case "copy": copyToClipboard()
     default: break
     }
-    onToolbarAction?(action)
+    onToolbarAction?(id)
   }
 
   // MARK: - Tool

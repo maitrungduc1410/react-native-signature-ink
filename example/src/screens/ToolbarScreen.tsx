@@ -1,9 +1,11 @@
 import * as React from 'react';
-import { Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import {
   SignatureInk,
+  ToolbarAction,
+  ToolbarIcon,
   type SignatureInkHandle,
-  type ToolbarButton,
+  type ToolbarItem,
 } from 'react-native-signature-ink';
 
 import {
@@ -14,13 +16,6 @@ import {
   useScreenStyles,
 } from '../ui/ScreenShell';
 
-const ALL_BUTTONS: ReadonlyArray<ToolbarButton> = [
-  'undo',
-  'redo',
-  'clear',
-  'copy',
-];
-
 export default function ToolbarScreen() {
   const styles = useScreenStyles();
   const ref = React.useRef<SignatureInkHandle>(null);
@@ -29,23 +24,56 @@ export default function ToolbarScreen() {
   const [position, setPosition] = React.useState<'top' | 'bottom'>('bottom');
   const [height, setHeight] = React.useState(48);
   const [spacing, setSpacing] = React.useState(8);
-  const [buttons, setButtons] =
-    React.useState<ReadonlyArray<ToolbarButton>>(ALL_BUTTONS);
+  const [showText, setShowText] = React.useState(false);
+  const [withCustom, setWithCustom] = React.useState(true);
+  const [maxVisible, setMaxVisible] = React.useState(0);
+  const [lastAction, setLastAction] = React.useState('—');
 
-  const toggleButton = (b: ToolbarButton) =>
-    setButtons((prev) =>
-      prev.includes(b)
-        ? prev.filter((x) => x !== b)
-        : [...ALL_BUTTONS.filter((x) => prev.includes(x) || x === b)]
-    );
+  // Built-in items keep their native behavior; the `save` item is a
+  // custom, headless button that only fires `onToolbarAction`.
+  const buttons = React.useMemo<ReadonlyArray<ToolbarItem>>(() => {
+    const items: ToolbarItem[] = [
+      showText
+        ? { id: ToolbarAction.Undo, icon: ToolbarIcon.Undo, text: 'Undo' }
+        : { id: ToolbarAction.Undo },
+      showText
+        ? { id: ToolbarAction.Redo, icon: ToolbarIcon.Redo, text: 'Redo' }
+        : { id: ToolbarAction.Redo },
+      showText
+        ? { id: ToolbarAction.Clear, icon: ToolbarIcon.Clear, text: 'Clear' }
+        : { id: ToolbarAction.Clear },
+      showText
+        ? { id: ToolbarAction.Copy, icon: ToolbarIcon.Copy, text: 'Copy' }
+        : { id: ToolbarAction.Copy },
+    ];
+    if (withCustom) {
+      items.push(
+        showText
+          ? { id: 'save', icon: ToolbarIcon.Save, text: 'Save' }
+          : { id: 'save', icon: ToolbarIcon.Save }
+      );
+    }
+    return items;
+  }, [showText, withCustom]);
+
+  const handleSave = React.useCallback(async () => {
+    try {
+      const uri = await ref.current?.toFile({ format: 'png', trim: true });
+      Alert.alert('Saved', uri ? `Wrote PNG to:\n${uri}` : 'Nothing to save');
+    } catch (e) {
+      Alert.alert('Save failed', String(e));
+    }
+  }, []);
 
   return (
     <Screen>
-      <Text style={styles.title}>Built-in toolbar</Text>
+      <Text style={styles.title}>Toolbar items</Text>
       <Text style={styles.description}>
-        The native toolbar uses SF Symbols on iOS and vector drawables on
-        Android. `toolbarHeight` drives the symmetric vertical gap around the
-        icons; `toolbarIconSpacing` is the horizontal gap between buttons.
+        `toolbarButtons` takes an array of item objects. Built-in ids (undo /
+        redo / clear / copy) carry native behavior; any other id (here `save`)
+        is a custom button that only fires `onToolbarAction`. Items can show an
+        icon, text, or both. When they don't fit, extras collapse into an
+        overflow menu.
       </Text>
 
       <View style={styles.canvasWrapper}>
@@ -57,10 +85,17 @@ export default function ToolbarScreen() {
           toolbarButtons={buttons}
           toolbarHeight={height}
           toolbarIconSpacing={spacing}
+          toolbarMaxVisibleButtons={maxVisible}
           toolbarTintColor="#2563eb"
           showBaseline
+          onToolbarAction={(e) => {
+            setLastAction(e.id);
+            if (e.id === 'save') handleSave();
+          }}
         />
       </View>
+
+      <Text style={styles.description}>Last action: {lastAction}</Text>
 
       <Section label="Layout">
         <View style={styles.row}>
@@ -77,7 +112,18 @@ export default function ToolbarScreen() {
         </View>
       </Section>
 
-      <Section label="Gaps">
+      <Section label="Items">
+        <View style={styles.row}>
+          <Toggle label="Text labels" value={showText} onChange={setShowText} />
+          <Toggle
+            label="Custom 'Save'"
+            value={withCustom}
+            onChange={setWithCustom}
+          />
+        </View>
+      </Section>
+
+      <Section label="Gaps & overflow">
         <View style={styles.row}>
           <NumberKnob
             label="toolbarHeight"
@@ -98,18 +144,16 @@ export default function ToolbarScreen() {
             onChange={setSpacing}
           />
         </View>
-      </Section>
-
-      <Section label="Visible buttons">
         <View style={styles.row}>
-          {ALL_BUTTONS.map((b) => (
-            <Toggle
-              key={b}
-              label={b}
-              value={buttons.includes(b)}
-              onChange={() => toggleButton(b)}
-            />
-          ))}
+          <NumberKnob
+            label="maxVisible (0 = auto)"
+            value={maxVisible}
+            min={0}
+            max={6}
+            step={1}
+            format={(v) => (v === 0 ? 'auto' : `${v}`)}
+            onChange={setMaxVisible}
+          />
         </View>
       </Section>
     </Screen>

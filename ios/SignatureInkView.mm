@@ -126,7 +126,9 @@ using namespace facebook::react;
 {
     if (auto emitter = std::dynamic_pointer_cast<const SignatureInkViewEventEmitter>(_eventEmitter)) {
         SignatureInkViewEventEmitter::OnToolbarAction payload;
-        payload.action = std::string([action UTF8String]);
+        std::string idStr = std::string([action UTF8String]);
+        payload.itemId = idStr;
+        payload.action = idStr;
         emitter->onToolbarAction(payload);
     }
 }
@@ -204,15 +206,11 @@ using namespace facebook::react;
         NSString *pos = [NSString stringWithUTF8String:newViewProps.toolbarPosition.c_str()];
         _surface.toolbarPosition = (pos.length > 0) ? pos : @"bottom";
     }
-    if (oldViewProps.toolbarButtons != newViewProps.toolbarButtons) {
-        NSMutableArray<NSString *> *buttons = [NSMutableArray array];
-        for (auto const &b : newViewProps.toolbarButtons) {
-            [buttons addObject:[NSString stringWithUTF8String:b.c_str()]];
-        }
-        if (buttons.count == 0) {
-            buttons = [@[@"undo", @"redo", @"clear", @"copy"] mutableCopy];
-        }
-        _surface.toolbarButtons = buttons;
+    if (oldViewProps.toolbarItemsJson != newViewProps.toolbarItemsJson) {
+        _surface.toolbarItemsJson = [NSString stringWithUTF8String:newViewProps.toolbarItemsJson.c_str()];
+    }
+    if (oldViewProps.toolbarMaxVisibleButtons != newViewProps.toolbarMaxVisibleButtons) {
+        _surface.toolbarMaxVisibleButtons = newViewProps.toolbarMaxVisibleButtons;
     }
     if (oldViewProps.toolbarBackgroundColor != newViewProps.toolbarBackgroundColor) {
         _surface.toolbarBackgroundColor = RCTUIColorFromSharedColor(newViewProps.toolbarBackgroundColor);

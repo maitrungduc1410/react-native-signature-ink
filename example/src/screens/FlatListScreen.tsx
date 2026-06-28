@@ -154,7 +154,7 @@ function SignatureRow({
           showBaseline
           showToolbar
           toolbarTintColor={tokens.accent}
-          toolbarButtons={['undo', 'clear']}
+          toolbarButtons={[{ id: 'undo' }, { id: 'clear' }]}
           onChange={(e) => {
             setEmpty(e.isEmpty);
             onSignedChange(!e.isEmpty);
