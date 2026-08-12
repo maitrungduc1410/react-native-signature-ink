@@ -131,6 +131,15 @@ React Native's core registers `topChange` as a bubbling event for `TextInput` / 
 
 Sharing a `file://` URI cross-process on API 24+ throws `FileUriExposedException`. Clipboard copy writes the PNG to the app cache and shares a `content://` URI via the library's bundled `FileProvider` (`AndroidManifest.xml` + `res/xml/signature_ink_file_paths.xml`). Don't change to `file://`.
 
+### Android `FileProvider` — declare our own subclass, never the AndroidX class
+
+The manifest merger keys `<provider>` nodes by `android:name`. Declaring `androidx.core.content.FileProvider` directly makes our node the *same node* as the one from any other library — or the host app — that declares it, and the build dies on the conflicting `android:authorities` / `FILE_PROVIDER_PATHS` values ([#2](https://github.com/maitrungduc1410/react-native-signature-ink/issues/2)). We ship [`SignatureInkFileProvider`](android/src/main/java/com/signatureink/SignatureInkFileProvider.kt) purely to own a unique merge key.
+
+Two things to keep in mind if you touch this:
+
+- Keep the `<meta-data android:name="android.support.FILE_PROVIDER_PATHS">` child. The `FileProvider(@XmlRes int)` constructor looks like it replaces it, but the **static** `getUriForFile(context, authority, file)` we call passes `ID_NULL` and re-reads the paths XML from `PackageManager` — dropping the meta-data throws `Missing android.support.FILE_PROVIDER_PATHS meta-data` at runtime.
+- The same "unique name" rule applies to the paths resource: ours is `res/xml/signature_ink_file_paths.xml`, not `file_paths.xml`, because the resource merger silently lets the last `@xml/file_paths` win.
+
 ### iOS Info.plist for `saveToPhotoLibrary`
 
 Host apps that call `saveToPhotoLibrary` MUST declare `NSPhotoLibraryAddUsageDescription` in their `Info.plist`. iOS will crash the process otherwise. We document this in the README and the JSDoc on `SignatureInkHandle.saveToPhotoLibrary`. Don't drop the warning.

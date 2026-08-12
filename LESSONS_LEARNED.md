@@ -20,6 +20,7 @@ Each section follows the same shape: **symptom → root cause → fix → genera
 - [12. Build-system papercuts we'd save you from](#12-build-system-papercuts-wed-save-you-from)
 - [13. API design lessons](#13-api-design-lessons)
 - [14. Android toolbar at runtime: stale rebuilds and lying measurements](#14-android-toolbar-at-runtime-stale-rebuilds-and-lying-measurements)
+- [15. The `FileProvider` we bundled broke other people's builds](#15-the-fileprovider-we-bundled-broke-other-peoples-builds)
 
 ---
 
@@ -184,6 +185,8 @@ Bundling the FileProvider in the library (rather than asking host apps to declar
 
 **Generalised lesson:** Any time you produce a file inside a library and hand it to a system service (clipboard, share sheet, intent extra), it must be `content://`. The friction of bundling a `FileProvider` once is much smaller than the friction of every consumer hitting this crash and having to read the docs. Treat this as part of the library's contract, not part of the host app's setup.
 
+Namespacing the *authority* turned out not to be enough, though — see §15.
+
 ## 11. Recurring bugs are a smell
 
 The tool picker bug (§3) was "fixed" four times before we understood it. The Fabric recycle bug (§1) was "fixed" three times before we landed on "reset everything." The Android pen-width unit bug (§7) was "fixed" twice before we realised we'd missed a draw site.
@@ -253,6 +256,40 @@ Adding the object-based toolbar (icons + text labels + an overflow menu) reopene
 **Fix:** Make each item's estimated footprint equal what it will actually occupy. Use the absolute `setCompoundDrawablesWithIntrinsicBounds` so the off-screen `measure()` includes the icon (matching iOS's `intrinsicContentSize`; icon stays leading), and use the fixed `slot` width for icon-only items instead of measuring them at all.
 
 **Generalised lesson:** Overflow/capacity math is only as good as the widths you feed it, and an off-screen `measure()` is not the same as the on-screen layout. Anything that resolves lazily on attach (RTL-relative drawables, themed paddings, layout-direction-dependent insets) will be missing or wrong at measure time. Either measure the value the way it will actually be laid out, or — better — derive the footprint from the layout rule you already committed to: a fixed-box child is exactly its box; only `WRAP_CONTENT` children need measuring. And when one platform's intrinsic-size API "just works," port its *result*, not its mechanism.
+
+## 15. The `FileProvider` we bundled broke other people's builds
+
+**Symptom:** Reported as [#2](https://github.com/maitrungduc1410/react-native-signature-ink/issues/2). An app that installs both this library and `@react-native-documents/viewer` can't build Android at all — `:app:processDebugMainManifest` fails before any of our code runs:
+
+```
+Attribute provider#androidx.core.content.FileProvider@authorities
+  value=(com.michamba.android.reactnativedocumentviewer.fileprovider) from [:react-native-documents_viewer]
+  is also present at [:react-native-signature-ink] value=(com.michamba.android.signatureinkprovider).
+```
+
+**Root cause:** The manifest merger doesn't match elements positionally — it matches them by a per-element-type *key*, and for `<provider>` that key is `android:name`:
+
+```java
+PROVIDER(
+        MergeType.MERGE,
+        PROVIDER_KEY_RESOLVER,   // delegates to the android:name resolver
+        AttributeModel.newModel(SdkConstants.ATTR_NAME).setIsPackageDependent()),
+```
+
+We had declared `android:name="androidx.core.content.FileProvider"`. So had they. Two different libraries, same key — the merger concluded these were one node declared twice and tried to reconcile two authorities and two `FILE_PROVIDER_PATHS` values into one element. There is no correct reconciliation, so it errors out. Note this is not specific to that library: the host app declaring its own `androidx.core.content.FileProvider` collides with us just as hard, which makes the blast radius much larger than one unlucky dependency pair.
+
+We'd namespaced the *authority* (§10) and stopped there, assuming that was the collision surface. It's the runtime collision surface. The build-time one is the class name.
+
+**Non-fix:** `tools:replace="android:authorities"` in the host app. It makes the build pass by picking one authority and dropping the other, so whichever library lost silently throws `Couldn't find meta-data for provider with authority …` the first time it tries to share a file. Trading a build error for a runtime crash in someone else's code is worse than the build error.
+
+**Fix:** Ship a one-line subclass, [`SignatureInkFileProvider`](android/src/main/java/com/signatureink/SignatureInkFileProvider.kt), and point `android:name` at it. Nothing else changes — `FileProvider.getUriForFile` resolves the path strategy via `PackageManager.resolveContentProvider(authority, GET_META_DATA)`, so it only ever cared about the authority, which we didn't touch. Existing consumers see no behavioural difference and no migration.
+
+Two traps while doing this:
+
+- The `<meta-data android:name="android.support.FILE_PROVIDER_PATHS">` child stays. AndroidX 1.9+ added a `protected FileProvider(@XmlRes int)` constructor that reads the paths XML from the subclass, which makes the meta-data look redundant — but the **static** `getUriForFile(context, authority, file)` overload hardcodes `ResourcesCompat.ID_NULL` and re-parses the meta-data through `PackageManager`. Remove the meta-data and every clipboard copy throws `Missing android.support.FILE_PROVIDER_PATHS meta-data`.
+- Resources have the same problem one layer down, and it's quieter. The other library used `@xml/file_paths`; if we had too, the resource merger would have silently let one definition win instead of failing the build. `signature_ink_file_paths.xml` was already namespaced, so this one we got right by accident.
+
+**Generalised lesson:** In a library, every identifier that lands in the merged manifest or the merged resource table is a global name in the consumer's app, and someone else will pick the obvious one. That includes the things that don't feel like your names — a framework class you're only *referencing*, like `androidx.core.content.FileProvider`, still becomes your merge key. Assume every entry you contribute will coexist with a stranger's entry of the same shape, and namespace the class name, the authority, and the resource file, not just the one that's documented as needing it. And unlike our other bugs, this one costs the consumer their entire build, not a feature — a library's manifest contributions deserve the same scrutiny as its public API.
 
 ---
 
