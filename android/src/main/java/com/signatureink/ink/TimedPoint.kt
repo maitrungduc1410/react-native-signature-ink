@@ -21,6 +21,7 @@ internal class TimedPoint(
   fun distanceTo(other: TimedPoint): Float =
     hypot((other.x - x).toDouble(), (other.y - y).toDouble()).toFloat()
 
+  /** Distance / time in raw pixels per millisecond. Convert with density before mixing with dp pen widths. */
   fun velocityFrom(start: TimedPoint): Float {
     val dt = (timestamp - start.timestamp).coerceAtLeast(1L)
     val d = distanceTo(start)

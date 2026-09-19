@@ -53,6 +53,9 @@ internal class SignatureCanvasView @JvmOverloads constructor(
   // `Canvas.drawCircle`, `bezier.draw`, SVG `stroke-width`) converts
   // via [dpToPx] at the point of use, so stroke-data round-trips and
   // per-device rendering stay density-independent.
+  // KEEP IN SYNC: the velocity fed to [strokeWidth] must also be in
+  // dp/ms ([pxPerMsToDpPerMs]). Widths in dp + speed in px/ms makes
+  // the same hand movement read N× faster on an N× screen.
   var penMinWidth: Float = 1f
     set(value) { field = value; lastVelocity = 0f; lastWidth = (penMinWidth + penMaxWidth) / 2f }
 
@@ -186,6 +189,7 @@ internal class SignatureCanvasView @JvmOverloads constructor(
 
   private var currentStroke: Stroke? = null
   private val activePoints: ArrayDeque<TimedPoint> = ArrayDeque()
+  // dp/ms after [pxPerMsToDpPerMs]; same unit as the input to [strokeWidth].
   private var lastVelocity: Float = 0f
   // Kept in dp (see [penMinWidth] / [penMaxWidth] doc). Converted to px
   // before being handed to `paint.strokeWidth` or `bezier.draw`.
@@ -202,6 +206,16 @@ internal class SignatureCanvasView @JvmOverloads constructor(
     dp,
     resources.displayMetrics,
   )
+
+  /**
+   * px/ms → dp/ms. [TimedPoint.velocityFrom] is raw MotionEvent
+   * pixels per millisecond; [strokeWidth] divides [penMaxWidth] (dp)
+   * by that speed. Convert at this boundary so a 0.6 dp/ms stroke
+   * tapers the same on 1×/2×/3×. Replay walks [addPointToActiveBuffer]
+   * and inherits the conversion.
+   */
+  private fun pxPerMsToDpPerMs(pxPerMs: Float): Float =
+    pxPerMs / resources.displayMetrics.density
 
   private var inkBitmap: Bitmap? = null
   private var inkCanvas: Canvas? = null
@@ -434,7 +448,7 @@ internal class SignatureCanvasView @JvmOverloads constructor(
       paint.color = paintColor
       val startPoint = activePoints[1]
       val endPoint = activePoints[2]
-      val velocity = endPoint.velocityFrom(startPoint)
+      val velocity = pxPerMsToDpPerMs(endPoint.velocityFrom(startPoint))
       val filtered = velocityFilterWeight * velocity +
         (1 - velocityFilterWeight) * lastVelocity
       val newWidth = strokeWidth(filtered)
@@ -463,6 +477,7 @@ internal class SignatureCanvasView @JvmOverloads constructor(
     paint.strokeWidth = savedWidth
   }
 
+  /** [velocity] is dp/ms (see [pxPerMsToDpPerMs]). Result is dp. */
   private fun strokeWidth(velocity: Float): Float {
     return max(penMaxWidth / (velocity + 1), penMinWidth)
   }
