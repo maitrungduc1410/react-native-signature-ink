@@ -292,7 +292,7 @@ const data = await ref.current?.getStrokeData();
 ref.current?.setStrokeData(data);
 ```
 
-The format is `StrokePoint[][]`. Every point has `{ x, y, t }`; iOS additionally captures `pressure`, `azimuth`, `altitude`, and per-point `size`. Unknown fields are ignored on `setStrokeData`, so payloads round-trip cleanly across platforms.
+The format is `StrokePoint[][]`. Every point has `{ x, y, t }` in density-independent view coordinates (dp on Android, points on iOS); iOS additionally captures `pressure`, `azimuth`, `altitude`, and per-point `size`. Unknown fields are ignored on `setStrokeData`, so payloads round-trip cleanly across platforms and screen densities.
 
 ### Replay animation
 

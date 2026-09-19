@@ -208,6 +208,14 @@ internal class SignatureCanvasView @JvmOverloads constructor(
   )
 
   /**
+   * Inverse of [dpToPx]. [TimedPoint] x/y stay in raw MotionEvent pixels
+   * for Canvas; [getStrokeData] / [setStrokeData] convert at the JSON
+   * boundary so the public `{x,y}` matches iOS points / JS dp.
+   */
+  private fun pxToDp(px: Float): Float =
+    px / resources.displayMetrics.density
+
+  /**
    * px/ms → dp/ms. [TimedPoint.velocityFrom] is raw MotionEvent
    * pixels per millisecond; [strokeWidth] divides [penMaxWidth] (dp)
    * by that speed. Convert at this boundary so a 0.6 dp/ms stroke
@@ -649,8 +657,10 @@ internal class SignatureCanvasView @JvmOverloads constructor(
       val arr = JSONArray()
       for (p in stroke.points) {
         val o = JSONObject()
-        o.put("x", p.x.toDouble())
-        o.put("y", p.y.toDouble())
+        // Public stroke JSON is dp (same space as iOS points). In-memory
+        // points stay in px so Canvas / velocity math keep one unit.
+        o.put("x", pxToDp(p.x).toDouble())
+        o.put("y", pxToDp(p.y).toDouble())
         o.put("t", p.timestamp)
         arr.put(o)
       }
@@ -673,8 +683,8 @@ internal class SignatureCanvasView @JvmOverloads constructor(
       }
       for (j in 0 until pointsArray.length()) {
         val o = pointsArray.optJSONObject(j) ?: continue
-        val x = o.optDouble("x", 0.0).toFloat()
-        val y = o.optDouble("y", 0.0).toFloat()
+        val x = dpToPx(o.optDouble("x", 0.0).toFloat())
+        val y = dpToPx(o.optDouble("y", 0.0).toFloat())
         val t = o.optLong("t", System.currentTimeMillis())
         stroke.points.add(TimedPoint(x, y, t))
       }

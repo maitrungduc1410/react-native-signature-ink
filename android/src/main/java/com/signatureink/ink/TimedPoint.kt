@@ -3,8 +3,10 @@ package com.signatureink.ink
 import kotlin.math.hypot
 
 /**
- * A single sampled (x, y, t) tuple. The timestamp is consumed by the
- * velocity-Bezier smoother to taper stroke width with pen speed.
+ * A single sampled (x, y, t) tuple. x/y are raw MotionEvent pixels
+ * (Canvas space). Public JSON converts them to dp at get/setStrokeData.
+ * The timestamp is consumed by the velocity-Bezier smoother to taper
+ * stroke width with pen speed.
  */
 internal class TimedPoint(
   var x: Float,

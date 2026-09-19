@@ -47,8 +47,10 @@ export type InkType =
 /**
  * A single captured input sample within a stroke.
  *
- * Coordinates are in the view's local coordinate space (CSS pixels / dp).
- * The exact set of fields varies between platforms:
+ * Coordinates are in the view's local coordinate space (CSS pixels / dp
+ * on Android, points on iOS) so a payload captured on a 3× device
+ * restores at the same physical position on a 1× device. The exact set
+ * of fields varies between platforms:
  *
  * - All platforms set `x`, `y`, `t`.
  * - iOS additionally fills `pressure`, `azimuth`, `altitude` and `size`
