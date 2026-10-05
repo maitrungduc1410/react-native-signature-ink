@@ -68,8 +68,8 @@ export interface ToolbarItemBase {
 export type BuiltInToolbarItem = ToolbarItemBase & { id: ToolbarActionId };
 
 /**
- * A custom (app-defined) item. It has no built-in behavior — tapping it
- * only fires `onToolbarAction({ id })` — so it must render *something*:
+ * A custom (app-defined) item. It has no built-in behavior (tapping it
+ * only fires `onToolbarAction({ id })`), so it must render *something*:
  * at least one of `icon` or `text` is required at compile time.
  */
 export type CustomToolbarItem = ToolbarItemBase & { id: string } & (

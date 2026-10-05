@@ -69,7 +69,7 @@ export interface NativeProps extends ViewProps {
    * density-independent units as `penMinWidth`. Default: `3`.
    */
   penMaxWidth?: Float;
-  /** Android only — velocity smoother weight (0..1). Ignored on iOS. */
+  /** Android only: velocity smoother weight (0..1). Ignored on iOS. */
   velocityFilterWeight?: Float;
 
   // ── Canvas / theming ───────────────────────────────────────────────
@@ -261,6 +261,12 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
   ],
 });
 
+/**
+ * The raw Fabric host component behind {@link SignatureInk}. It takes the
+ * codegen props (for example `inkBackgroundColor` and `toolbarItemsJson`)
+ * and has no ref methods or Promise results. Prefer `SignatureInk` unless
+ * you need to drive the view yourself.
+ */
 export default codegenNativeComponent<NativeProps>(
   'SignatureInkView'
 ) as HostComponent<NativeProps>;

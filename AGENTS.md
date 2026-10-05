@@ -7,7 +7,7 @@ Operational guide for AI coding agents (and new contributors) working on this re
 1. This file — operational quick-reference.
 2. [`LESSONS_LEARNED.md`](LESSONS_LEARNED.md) — the narrative behind every gotcha listed below. Several bugs in this repo were "fixed" three or four times before we understood the actual rule; that file is the difference between you re-fixing them again or not. **Read it before you touch view recycling, the tool picker, Android layout, or unit conversion.**
 3. [`ARCHITECTURE.md`](ARCHITECTURE.md) — how the library is structured end-to-end.
-4. [`README.md`](README.md) — public docs.
+4. [`README.md`](README.md): public overview. The full user docs are the site in [`docs/`](docs/).
 5. [`CONTRIBUTING.md`](CONTRIBUTING.md) — workflow conventions.
 
 ## Project overview
@@ -142,7 +142,7 @@ Two things to keep in mind if you touch this:
 
 ### iOS Info.plist for `saveToPhotoLibrary`
 
-Host apps that call `saveToPhotoLibrary` MUST declare `NSPhotoLibraryAddUsageDescription` in their `Info.plist`. iOS will crash the process otherwise. We document this in the README and the JSDoc on `SignatureInkHandle.saveToPhotoLibrary`. Don't drop the warning.
+Host apps that call `saveToPhotoLibrary` MUST declare `NSPhotoLibraryAddUsageDescription` in their `Info.plist`. iOS will crash the process otherwise. We document this in the docs site (`docs/guide/installation.md`) and the JSDoc on `SignatureInkHandle.saveToPhotoLibrary`. Don't drop the warning.
 
 ### Photo library export must be opaque
 
@@ -151,6 +151,22 @@ The iOS Photos viewer renders transparent PNGs against its own black chrome — 
 ### Recurring bugs are a smell
 
 If a bug you're about to fix has been fixed before under a different prop name / sibling view / code path, **stop**. Your "fix" is almost certainly partial. Find the actual rule, audit every site that obeys it, and add a `KEEP IN SYNC` comment so the next change doesn't drift. See [`LESSONS_LEARNED.md` §11](LESSONS_LEARNED.md#11-recurring-bugs-are-a-smell) for the bug-fix-then-it-came-back history that produced this rule.
+
+## Documentation Site
+
+`docs/` is its own Yarn workspace (`react-native-signature-ink-docs`) so VitePress/TypeDoc stay out of the library's devDependencies. It is excluded from the root `tsc`, ESLint and the `bob` build. Published at https://maitrungduc1410.github.io/react-native-signature-ink/ by `.github/workflows/docs.yml` (build on PRs, deploy on push to `master`).
+
+```sh
+yarn docs:dev       # TypeDoc + VitePress dev server
+yarn docs:build     # TypeDoc + static build into docs/.vitepress/dist (fails on dead links)
+yarn docs:preview   # Serve the built site
+```
+
+- The API reference is generated from the TSDoc in `src/`, so public API changes are documented by writing TSDoc there. Only symbols exported from `src/index.tsx` appear.
+- Guide pages exist in English (`docs/guide/`), Vietnamese (`docs/vi/guide/`) and Chinese (`docs/zh/guide/`). Change all three together; translated headings carry `{#english-slug}` ids so anchors match across locales. Sidebar labels live in `docs/.vitepress/config.mts`.
+- Every hand-written page needs a unique `description` frontmatter (about 110 to 160 characters; shorter for Chinese). It feeds the meta description, Open Graph and Twitter tags that `transformHead` in `config.mts` adds, together with canonical/hreflang links. The link preview image is `docs/public/og.png`, rendered from `docs/public/og.svg`.
+- The in-browser pad on the Props page (`docs/.vitepress/theme/components/SignaturePad.vue`) is a JavaScript port of the Android ink algorithm. If you change the algorithm in `android/src/main/java/com/signatureink/ink/` or `SignatureCanvasView.kt`, update the port too.
+- Platform behavior documented in `docs/guide/platform-differences.md` (history, export backgrounds, defaults) is verified against the native code. Update that page when native behavior changes.
 
 ## PRs / commits
 

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://typedoc-plugin-markdown.org/schema.json",
+  "name": "react-native-signature-ink",
+  "entryPoints": [
+    "../src/index.tsx"
+  ],
+  "tsconfig": "../tsconfig.build.json",
+  "out": "api",
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "typedoc-vitepress-theme"
+  ],
+  "docsRoot": ".",
+  "readme": "none",
+  "entryFileName": "index",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "disableSources": true,
+  "intentionallyNotExported": [
+    "ChangePayload",
+    "ResultPayload",
+    "ReplayProgressPayload",
+    "ToolbarActionPayload",
+    "\"react-native/Libraries/Types/CodegenTypesNamespace\".DirectEventHandler",
+    "\"react-native/Libraries/Types/CodegenTypesNamespace\".WithDefault"
+  ],
+  "sort": [
+    "kind",
+    "instance-first",
+    "alphabetical"
+  ],
+  "hidePageHeader": true,
+  "hideBreadcrumbs": true,
+  "useCodeBlocks": true,
+  "parametersFormat": "table",
+  "interfacePropertiesFormat": "table",
+  "classPropertiesFormat": "table",
+  "typeDeclarationFormat": "table",
+  "enumMembersFormat": "table",
+  "sidebar": {
+    "autoConfiguration": true,
+    "format": "vitepress",
+    "pretty": true,
+    "collapsed": true
+  }
+}

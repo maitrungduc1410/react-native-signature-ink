@@ -94,6 +94,18 @@ const serializeToolbarItems = (
   return JSON.stringify(normalized);
 };
 
+/**
+ * Native signature pad: PencilKit on iOS, a velocity-Bezier renderer on
+ * Android. Size it with `style`, configure it with {@link SignatureInkProps}
+ * and drive it through a {@link SignatureInkHandle} ref.
+ *
+ * @example
+ * const ref = useRef<SignatureInkHandle>(null);
+ *
+ * <SignatureInk ref={ref} style={{ height: 240 }} showBaseline showToolbar />;
+ *
+ * const png = await ref.current?.toBase64({ trim: true });
+ */
 export const SignatureInk = React.forwardRef<
   SignatureInkHandle,
   SignatureInkProps

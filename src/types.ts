@@ -5,7 +5,9 @@ import type { ToolbarItem } from './toolbar';
  * Image format used by all raster export commands (`toBase64`, `toFile`,
  * `saveToPhotoLibrary`).
  *
- * - `png` produces a lossless image with full alpha (transparent background).
+ * - `png` produces a lossless image with alpha. On iOS the background is
+ *   always transparent; on Android a non-transparent `backgroundColor` is
+ *   part of the image.
  * - `jpeg` produces a smaller lossy image. JPEG has no alpha so the canvas
  *   `backgroundColor` (or white if transparent) is composited beneath the
  *   ink before encoding.
@@ -20,9 +22,9 @@ export type ToolbarPosition = 'top' | 'bottom';
 /**
  * Line rendering style for the signing baseline.
  *
- * - `'solid'`  — continuous 1pt line.
- * - `'dashed'` — alternating dash + gap segments (default).
- * - `'dotted'` — evenly spaced round dots.
+ * - `'solid'`: continuous 1pt line.
+ * - `'dashed'`: alternating dash + gap segments (default).
+ * - `'dotted'`: evenly spaced round dots.
  */
 export type BaselineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -30,8 +32,9 @@ export type BaselineStyle = 'solid' | 'dashed' | 'dotted';
  * PencilKit ink type used as the initial `canvasView.tool` on iOS.
  * Availability depends on the iOS version:
  *
- * - iOS 13+:   `pen`, `pencil`, `marker`
- * - iOS 14+:   adds `monoline`, `fountainPen`, `watercolor`, `crayon`
+ * - All versions: `pen`, `pencil`, `marker`
+ * - iOS 17+: adds `monoline`, `fountainPen`, `watercolor`, `crayon`.
+ *   On older versions these fall back to `pen`.
  *
  * Android always renders a single velocity-Bezier pen and ignores this.
  */
@@ -136,8 +139,9 @@ export interface ExportImageOptions {
    */
   quality?: number;
   /**
-   * Crop the rendered bitmap to the strokes' bounding box (plus a 2pt
-   * inset) instead of the full canvas size. Defaults to `false`.
+   * Crop the rendered bitmap to the strokes' bounding box (plus a small
+   * margin) instead of the full canvas size. Defaults to `false`, except
+   * for `saveToPhotoLibrary` where it defaults to `true`.
    */
   trim?: boolean;
 }
@@ -180,8 +184,9 @@ export interface SignatureInkProps {
   /**
    * Ink color. On iOS this is captured *literally* (PencilKit's dark-mode
    * auto-inversion is disabled), so pass concrete colors like `#111` or
-   * `'white'` — not trait-adaptive ones like `'label'`.
-   * Default: black-ish.
+   * `'white'`, not trait-adaptive ones like `'label'`. Applies to new
+   * strokes; existing strokes keep their color.
+   * Default: black on iOS, `#111111` on Android.
    */
   penColor?: ColorValue;
   /**
@@ -189,6 +194,9 @@ export interface SignatureInkProps {
    * density-independent units (points on iOS, dp on Android). The
    * physical thickness rendered for a given value is the same on both
    * platforms across all screen densities. Default: `1`.
+   *
+   * On iOS PencilKit does its own width modulation: the tool width is the
+   * midpoint of `penMinWidth` and `penMaxWidth` (`2` by default).
    */
   penMinWidth?: number;
   /**
@@ -198,7 +206,7 @@ export interface SignatureInkProps {
   penMaxWidth?: number;
   /**
    * 0..1 weight of the most recent velocity sample in the velocity smoother
-   * (Android only — PencilKit handles smoothing itself). Higher values feel
+   * (Android only; PencilKit handles smoothing itself). Higher values feel
    * snappier; lower values produce smoother (laggier) tapering. Default: 0.7.
    */
   velocityFilterWeight?: number;
@@ -220,9 +228,10 @@ export interface SignatureInkProps {
   baselineColor?: ColorValue;
   /**
    * Distance in points/dp from the baseline to the bottom of the canvas
-   * drawing area. Used only when `showToolbar` is `false` — when the
+   * drawing area. Used only when `showToolbar` is `false`. When the
    * built-in toolbar is visible the baseline auto-anchors to the toolbar's
    * top edge so the visual gap above and below the icons stays symmetric.
+   * Default: `8` on iOS, `16` on Android.
    */
   baselineOffsetFromBottom?: number;
   /**
@@ -234,7 +243,7 @@ export interface SignatureInkProps {
   /**
    * Baseline stroke width in points/dp. Pass any positive value to
    * override the per-style default; pass `0` (or omit) to use the
-   * style-tuned default — `1` for `'solid'`/`'dashed'`, and a slightly
+   * style-tuned default: `1` for `'solid'`/`'dashed'`, and a slightly
    * thicker value for `'dotted'` so the round dots stay visible.
    *
    * On Android the value is interpreted as dp (density-adjusted at
@@ -287,7 +296,10 @@ export interface SignatureInkProps {
   toolbarBackgroundColor?: ColorValue;
   /**
    * Color applied to the toolbar icons (SF Symbols on iOS, vector
-   * drawables on Android). Defaults to the platform's accent color.
+   * drawables on Android). When omitted, iOS uses the view's tint color
+   * and Android draws each icon in its own drawable color (black for
+   * undo / redo / clear / copy, white for the others and the overflow
+   * button), so set it explicitly when you use custom icons on Android.
    */
   toolbarTintColor?: ColorValue;
   /**
@@ -333,9 +345,17 @@ export interface SignatureInkProps {
  * native side has finished its work.
  */
 export interface SignatureInkHandle {
-  /** Clear the canvas (also clears redo stack; can be undone). */
+  /**
+   * Clear the canvas and the redo stack. On iOS the clear is a history
+   * entry that `undo()` can restore; on Android it also discards the
+   * history and cannot be undone.
+   */
   clear: () => void;
-  /** Step one stroke back through history. No-op when the undo stack is empty. */
+  /**
+   * Step one entry back through history. No-op when the undo stack is
+   * empty. On iOS an entry is a stroke, a `clear()` or a `setStrokeData()`;
+   * on Android `undo()` always removes the last stroke.
+   */
   undo: () => void;
   /** Re-apply the most recently undone stroke. No-op when the redo stack is empty. */
   redo: () => void;
@@ -350,10 +370,17 @@ export interface SignatureInkHandle {
   /**
    * Animate the existing strokes as if the user were drawing them again.
    * Cancellable: any new stroke (or another `replay()` call) aborts the
-   * current animation.
+   * current animation. `undo`, `redo`, `clear` and `setStrokeData` also
+   * stop it. An interrupted replay leaves only the strokes revealed so far.
    */
   replay: (options?: ReplayOptions) => void;
-  /** Replace the canvas contents with the given stroke data. */
+  /**
+   * Replace the canvas contents with the given stroke data. Strokes are
+   * drawn with the current `penColor` and pen widths (the payload carries
+   * neither). Invalid input is ignored. On iOS the replacement can be
+   * undone. On Android the previous drawing is discarded and `undo()`
+   * removes the restored strokes one at a time.
+   */
   setStrokeData: (data: StrokeData) => void;
   /** Resolves with `true` when there are zero strokes on the canvas. */
   isEmpty: () => Promise<boolean>;
@@ -367,7 +394,11 @@ export interface SignatureInkHandle {
    * and resolves with the `file://` URI.
    */
   toFile: (options?: ExportImageOptions) => Promise<string>;
-  /** Resolves with an SVG document representing the current strokes. */
+  /**
+   * Resolves with an SVG document representing the current strokes, one
+   * `<path>` per stroke, cropped to the strokes' bounds. Coordinates are
+   * points on iOS and physical pixels on Android.
+   */
   toSvg: () => Promise<string>;
   /** Resolves with a JSON-serializable copy of the strokes. */
   getStrokeData: () => Promise<StrokeData>;

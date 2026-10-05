@@ -1,0 +1,126 @@
+/*
+ * Identity: signing ink, emerald #10B981 shading to teal #0F766E.
+ * Emerald fails contrast as text on white, so text-bearing brand colors are
+ * the darker emerald in the light theme (#047857 is 5.5:1 on white) and the
+ * light emerald in the dark theme (#34D399 is 8.9:1 on #1B1B1F).
+ */
+:root {
+  --rnsi-identity: #10b981;
+  --rnsi-identity-2: #0f766e;
+
+  --vp-c-brand-1: #047857;
+  --vp-c-brand-2: #065f46;
+  --vp-c-brand-3: #047857;
+  --vp-c-brand-soft: rgba(16, 185, 129, 0.14);
+
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-bg: #047857;
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-hover-bg: #065f46;
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-active-text: #ffffff;
+  --vp-button-brand-active-bg: #064e3b;
+  --vp-button-brand-active-border: transparent;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #047857 20%, #0f766e);
+  --vp-home-hero-image-background-image: radial-gradient(
+    closest-side,
+    rgba(16, 185, 129, 0.28),
+    rgba(15, 118, 110, 0.1) 55%,
+    transparent
+  );
+  --vp-home-hero-image-filter: blur(28px);
+}
+
+.dark {
+  --vp-c-brand-1: #34d399;
+  --vp-c-brand-2: #10b981;
+  --vp-c-brand-3: #10b981;
+  --vp-c-brand-soft: rgba(52, 211, 153, 0.16);
+
+  /* #0B2B22 on #10B981 is 6.0:1, on #34D399 7.9:1. */
+  --vp-button-brand-text: #0b2b22;
+  --vp-button-brand-bg: #10b981;
+  --vp-button-brand-hover-text: #0b2b22;
+  --vp-button-brand-hover-bg: #34d399;
+  --vp-button-brand-active-text: #0b2b22;
+  --vp-button-brand-active-bg: #10b981;
+
+  --vp-home-hero-name-background: linear-gradient(120deg, #6ee7b7 20%, #10b981);
+  --vp-home-hero-image-background-image: radial-gradient(
+    closest-side,
+    rgba(16, 185, 129, 0.24),
+    rgba(15, 118, 110, 0.1) 55%,
+    transparent
+  );
+}
+
+.home-section {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 48px 24px 0;
+}
+
+.home-section h2 {
+  margin-bottom: 8px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.home-section > p {
+  color: var(--vp-c-text-2);
+}
+
+.home-section .vp-doc div[class*='language-'] {
+  margin: 16px 0;
+}
+
+.demo-videos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: center;
+  margin: 24px 0;
+}
+
+.demo-videos figure {
+  margin: 0;
+  text-align: center;
+}
+
+.demo-videos video {
+  width: 280px;
+  max-width: 100%;
+  border-radius: 16px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+}
+
+.demo-videos figcaption {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+
+/* VPNavBar sets white-space: nowrap; long site titles must wrap inside the title area instead of overflowing. */
+.VPNavBar .container > .title {
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.VPNavBarTitle .title {
+  min-width: 0;
+}
+
+.VPNavBarTitle .title > span {
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.VPNavBarTitle .logo {
+  flex-shrink: 0;
+}
