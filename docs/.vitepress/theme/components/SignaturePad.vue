@@ -5,6 +5,7 @@
 // in for dp/points. Export, undo and stroke-data semantics follow Android.
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useData } from 'vitepress';
+import CodeBlock from './CodeBlock.vue';
 
 type Point = { x: number; y: number; t: number };
 type Stroke = { color: string; minWidth: number; maxWidth: number; points: Point[] };
@@ -729,7 +730,7 @@ const code = computed(() => {
 
     <details class="rnsi-pad__code">
       <summary>{{ t.code }}</summary>
-      <pre><code>{{ code }}</code></pre>
+      <CodeBlock :code="code" />
     </details>
   </div>
 </template>
@@ -1038,15 +1039,5 @@ const code = computed(() => {
 .rnsi-pad__code summary {
   cursor: pointer;
   font-weight: 600;
-}
-
-.rnsi-pad__code pre {
-  margin: 8px 0 0;
-  padding: 12px;
-  overflow-x: auto;
-  border-radius: 8px;
-  background: var(--vp-code-block-bg);
-  font-size: 12px;
-  line-height: 1.6;
 }
 </style>
