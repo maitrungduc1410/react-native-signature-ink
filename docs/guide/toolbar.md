@@ -20,6 +20,7 @@ The bar takes `toolbarHeight` from the view (44 on iOS, 48 on Android) at the to
 | `toolbarPosition` | `'top' \| 'bottom'` | `'bottom'` | |
 | `toolbarButtons` | `ToolbarItem[]` | undo, redo, clear, copy | Order is kept. |
 | `toolbarMaxVisibleButtons` | `number` | `0` | Maximum number of inline buttons. `0` fits as many as the width allows. |
+| `toolbarOverflowLabel` | `string` | `'More'` | Accessibility label of the "…" button. |
 | `toolbarBackgroundColor` | `ColorValue` | `transparent` | |
 | `toolbarTintColor` | `ColorValue` | platform default | Color of icons and labels. See [Colors](#colors). |
 | `toolbarHeight` | `number` | iOS: `44`, Android: `48` | The gap above and below the icons is `(toolbarHeight - icon height) / 2`. |
@@ -94,9 +95,9 @@ The icon names map to SF Symbols on iOS and to bundled vector drawables drawn af
 Without `toolbarTintColor` the two platforms look different:
 
 - **iOS** uses the view's tint color (the system blue unless your app changes it).
-- **Android** draws each icon in its drawable's own color: black for undo, redo, clear and copy, but **white** for save, share, download, check and the overflow button. Text labels use the theme's button text color.
+- **Android** draws the icons black. Text labels use the theme's button text color.
 
-So on Android, custom icons and the "…" button are invisible on a light background unless you set a tint. Set `toolbarTintColor` whenever you use custom icons or the overflow menu, and pick a light tint on dark backgrounds.
+On dark backgrounds, set a light `toolbarTintColor`. A per-item `tintColor` must be a plain color: `PlatformColor` and `DynamicColorIOS` are ignored there (a development warning says so).
 
 ## Overflow menu {#overflow}
 
@@ -105,10 +106,10 @@ When the buttons do not fit, the extra ones move into a "…" menu at the end of
 - Icon-only buttons take a 44-wide slot; buttons with text are measured.
 - **iOS 14+** opens a native menu with the icon and label of each item; older iOS versions show an action sheet.
 - **Android** opens a `PopupMenu` with labels only. It follows light and dark mode.
-- Menu entries use the item's `accessibilityLabel`, which defaults to `text` and then to `id`. A bare `{ id: 'undo' }` therefore shows up as "undo" in the menu. Set `text` or `accessibilityLabel` on items that may overflow.
+- Menu entries use the item's `accessibilityLabel`, which defaults to `text`, then to "Undo", "Redo", "Clear" or "Copy" for built-in ids, then to `id`.
 
-The overflow button's accessibility label is "More". It is not localized.
+The overflow button's accessibility label is "More". Set `toolbarOverflowLabel` to localize it.
 
 ## Accessibility {#accessibility}
 
-Icon buttons are 44×44 and text buttons are 44 high, which meets the usual touch target size. Each button exposes its `accessibilityLabel`, and `disabled` items are reported as disabled. Without `toolbarButtons`, the default buttons are labeled "Undo", "Redo", "Clear" and "Copy". When you pass your own items, labels come from `accessibilityLabel`, `text` or `id`, so give built-in items a readable label in your app's language.
+Icon buttons are 44×44 and text buttons are 44 high, which meets the usual touch target size. Each button exposes its `accessibilityLabel`, and `disabled` items are reported as disabled. Without `toolbarButtons`, the default buttons are labeled "Undo", "Redo", "Clear" and "Copy". When you pass your own items, labels come from `accessibilityLabel` or `text`, then the same English defaults for built-in ids, then `id`. Set a label in your app's language if it is not English.

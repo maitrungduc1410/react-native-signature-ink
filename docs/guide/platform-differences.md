@@ -52,7 +52,7 @@ Set these props explicitly if you want both platforms to look the same.
 | `saveToPhotoLibrary` PNG | Opaque, white if no `backgroundColor` | `backgroundColor` if set, otherwise transparent |
 | Clipboard | Transparent trimmed PNG via `UIPasteboard` | Trimmed PNG with background via a `FileProvider` URI |
 | `trim` margin | 2 pt | 0.6 × `penMaxWidth` dp + 2 px |
-| SVG units and widths | Points, average width per stroke | Physical pixels, `(penMinWidth + penMaxWidth) / 2` |
+| SVG units and widths | Points, average width per stroke | dp, `(penMinWidth + penMaxWidth) / 2` |
 | `toFile` location | Temporary directory | Cache directory |
 | `saveToPhotoLibrary` result | `{ granted }`; `granted: false` when access is denied | `{ granted, uri }`; `granted: false` when the write fails |
 

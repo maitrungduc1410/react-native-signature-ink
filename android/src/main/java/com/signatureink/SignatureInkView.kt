@@ -54,6 +54,7 @@ internal class SignatureInkView @JvmOverloads constructor(
   private var toolbarPosition: String = "bottom"
   private var toolbarItems: List<ToolbarItemModel> = defaultToolbarItems()
   private var toolbarMaxVisibleButtons: Int = 0
+  private var toolbarOverflowLabel: String = "More"
   private var toolbarBackgroundColor: Int = Color.TRANSPARENT
   private var toolbarTintColor: Int? = null
   /** Toolbar height in dp; drives the symmetric vertical icon gap. */
@@ -129,6 +130,14 @@ internal class SignatureInkView @JvmOverloads constructor(
     applyChildLayout()
   }
 
+  fun setToolbarOverflowLabel(value: String?) {
+    val v = if (value.isNullOrEmpty()) "More" else value
+    if (toolbarOverflowLabel == v) return
+    toolbarOverflowLabel = v
+    invalidateToolbar()
+    applyChildLayout()
+  }
+
   fun setToolbarBackgroundColor(color: Int) {
     toolbarBackgroundColor = color
     toolbar?.setBackgroundColor(color)
@@ -180,7 +189,7 @@ internal class SignatureInkView @JvmOverloads constructor(
         val tint = if (o.isNull("tintColor")) null else o.optInt("tintColor")
         val label =
           if (o.isNull("accessibilityLabel")) (text ?: id)
-          else o.optString("accessibilityLabel", text ?: id)
+          else o.optString("accessibilityLabel").ifEmpty { text ?: id }
         val disabled = o.optBoolean("disabled", false)
         out.add(ToolbarItemModel(id, icon, text, tint, label, disabled))
       }
@@ -239,7 +248,7 @@ internal class SignatureInkView @JvmOverloads constructor(
 
     // Build each item and compute the footprint it will actually occupy.
     // Icon-only items are laid out in a fixed `slot`×`slot` box, so their
-    // footprint is exactly `slot` — measuring an ImageButton can over-report
+    // footprint is exactly `slot`; measuring an ImageButton can over-report
     // (default padding / intrinsic drawable size) and trigger a spurious
     // overflow. Text buttons are WRAP_CONTENT, so we measure their real
     // width (the icon is included now that it's an absolute, already-resolved
@@ -376,7 +385,7 @@ internal class SignatureInkView @JvmOverloads constructor(
       if (resId != 0) setImageResource(resId)
       scaleType = ImageView.ScaleType.CENTER_INSIDE
       toolbarTintColor?.let { setColorFilter(it) }
-      contentDescription = "More"
+      contentDescription = toolbarOverflowLabel
       isClickable = true
       isFocusable = true
       layoutParams = LinearLayout.LayoutParams(size, size).apply {
@@ -442,8 +451,8 @@ internal class SignatureInkView @JvmOverloads constructor(
   //   2. `invalidateToolbar()` additionally calls `requestLayout()`, whose
   //      override below posts a real measure+layout for the next frame.
   //      This is the safety net for the case the synchronous path can't
-  //      cover — a prop update that lands while the view's size is still 0
-  //      — and is the Android analogue of iOS's `setNeedsLayout`.
+  //      cover (a prop update that lands while the view's size is still
+  //      0) and is the Android analogue of iOS's `setNeedsLayout`.
   // The `onMeasure` / `onLayout` overrides handle Yoga's initial pass.
 
   // Re-runs our own measure + layout at the current size. Posted from

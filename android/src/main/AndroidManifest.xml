@@ -9,7 +9,7 @@
       android:name MUST stay our own subclass, never androidx.core.content.
       FileProvider: the merger keys <provider> by android:name, so the raw
       class collides with every other manifest declaring it. The meta-data
-      below is also required — the static getUriForFile() reads the paths
+      below is also required: the static getUriForFile() reads the paths
       XML back through PackageManager, not through the subclass.
     -->
     <provider

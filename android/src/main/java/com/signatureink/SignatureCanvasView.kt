@@ -31,6 +31,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 import kotlin.math.max
 
 /**
@@ -617,34 +618,37 @@ internal class SignatureCanvasView @JvmOverloads constructor(
   }
 
   fun toSvg(): String {
+    // SVG coordinates are dp, the same space as the stroke JSON and iOS
+    // points, so one SVG renders at the same size on every density.
+    // Locale.US is required: on comma-decimal locales (vi, de, fr, ...)
+    // `"%.2f".format` writes "12,50" and the SVG no longer parses.
     val bounds = totalBounds()
-    val w = max(1f, bounds.width())
-    val h = max(1f, bounds.height())
+    val left = pxToDp(bounds.left)
+    val top = pxToDp(bounds.top)
+    val w = max(1f, pxToDp(bounds.width()))
+    val h = max(1f, pxToDp(bounds.height()))
+    fun f(v: Float) = String.format(Locale.US, "%.2f", v)
     val sb = StringBuilder()
     sb.append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"")
-    sb.append("%.2f %.2f %.2f %.2f".format(bounds.left, bounds.top, w, h))
+    sb.append("${f(left)} ${f(top)} ${f(w)} ${f(h)}")
     sb.append("\" width=\"${w.toInt()}\" height=\"${h.toInt()}\">")
     for (stroke in strokes) {
       val pts = stroke.points
       if (pts.size < 2) {
         if (pts.size == 1) {
           val p = pts[0]
-          // SVG coordinates are in the same space as the point x/y (raw
-          // pixels on Android — they come from `MotionEvent.getX/Y`), so
-          // the radius derived from the dp pen widths must be converted
-          // to pixels too for the dot to render at the intended size.
-          sb.append("<circle cx=\"%.2f\" cy=\"%.2f\" r=\"%.2f\" fill=\"%s\"/>"
-            .format(p.x, p.y, dpToPx((stroke.minWidth + stroke.maxWidth) / 4f), colorHex(stroke.color)))
+          val r = (stroke.minWidth + stroke.maxWidth) / 4f
+          sb.append("<circle cx=\"${f(pxToDp(p.x))}\" cy=\"${f(pxToDp(p.y))}\" r=\"${f(r)}\" fill=\"${colorHex(stroke.color)}\"/>")
         }
         continue
       }
       sb.append("<path d=\"")
       for ((i, p) in pts.withIndex()) {
-        if (i == 0) sb.append("M%.2f,%.2f".format(p.x, p.y))
-        else sb.append(" L%.2f,%.2f".format(p.x, p.y))
+        sb.append(if (i == 0) "M" else " L")
+        sb.append(f(pxToDp(p.x))).append(',').append(f(pxToDp(p.y)))
       }
       sb.append("\" stroke=\"${colorHex(stroke.color)}\" stroke-width=\"")
-      sb.append("%.2f".format(dpToPx((stroke.minWidth + stroke.maxWidth) / 2f)))
+      sb.append(f((stroke.minWidth + stroke.maxWidth) / 2f))
       sb.append("\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>")
     }
     sb.append("</svg>")
@@ -681,11 +685,26 @@ internal class SignatureCanvasView @JvmOverloads constructor(
         minWidth = penMinWidth
         maxWidth = penMaxWidth
       }
-      for (j in 0 until pointsArray.length()) {
-        val o = pointsArray.optJSONObject(j) ?: continue
+      // `t` is ms on Android but seconds (fractional) on iOS. Without the
+      // conversion an iOS payload truncates to 0 ms deltas, velocity
+      // explodes and the whole stroke renders at penMinWidth.
+      val raw = (0 until pointsArray.length()).mapNotNull { pointsArray.optJSONObject(it) }
+      val inSeconds = raw.any {
+        val t = it.optDouble("t", Double.NaN)
+        !t.isNaN() && t != Math.floor(t)
+      }
+      var lastT = 0L
+      for ((j, o) in raw.withIndex()) {
         val x = dpToPx(o.optDouble("x", 0.0).toFloat())
         val y = dpToPx(o.optDouble("y", 0.0).toFloat())
-        val t = o.optLong("t", System.currentTimeMillis())
+        val tRaw = o.optDouble("t", Double.NaN)
+        // Missing `t`: synthesize ~60 Hz spacing so the taper stays sane.
+        val t = when {
+          tRaw.isNaN() -> if (j == 0) 0L else lastT + 16L
+          inSeconds -> Math.round(tRaw * 1000.0)
+          else -> tRaw.toLong()
+        }
+        lastT = t
         stroke.points.add(TimedPoint(x, y, t))
       }
       if (stroke.points.isNotEmpty()) strokes.add(stroke)

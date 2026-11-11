@@ -20,6 +20,7 @@ Thanh này chiếm `toolbarHeight` của view (44 trên iOS, 48 trên Android) �
 | `toolbarPosition` | `'top' \| 'bottom'` | `'bottom'` | |
 | `toolbarButtons` | `ToolbarItem[]` | undo, redo, clear, copy | Giữ nguyên thứ tự. |
 | `toolbarMaxVisibleButtons` | `number` | `0` | Số nút hiển thị trực tiếp tối đa. `0` nghĩa là hiện nhiều nhất mà chiều rộng cho phép. |
+| `toolbarOverflowLabel` | `string` | `'More'` | Accessibility label của nút "…". |
 | `toolbarBackgroundColor` | `ColorValue` | `transparent` | |
 | `toolbarTintColor` | `ColorValue` | mặc định theo nền tảng | Màu của icon và nhãn. Xem [Màu sắc](#colors). |
 | `toolbarHeight` | `number` | iOS: `44`, Android: `48` | Khoảng trống trên và dưới icon là `(toolbarHeight - chiều cao icon) / 2`. |
@@ -94,9 +95,9 @@ Tên icon ánh xạ sang SF Symbols trên iOS và sang vector drawable đi kèm,
 Khi không có `toolbarTintColor`, hai nền tảng trông khác nhau:
 
 - **iOS** dùng tint color của view (màu xanh hệ thống, trừ khi app của bạn đổi).
-- **Android** vẽ mỗi icon bằng màu gốc của drawable: đen cho undo, redo, clear và copy, nhưng **trắng** cho save, share, download, check và nút overflow. Nhãn chữ dùng màu chữ nút của theme.
+- **Android** vẽ icon màu đen. Nhãn chữ dùng màu chữ nút của theme.
 
-Vì vậy trên Android, icon tuỳ chỉnh và nút "…" sẽ vô hình trên nền sáng nếu bạn không đặt tint. Hãy đặt `toolbarTintColor` mỗi khi dùng icon tuỳ chỉnh hoặc menu overflow, và chọn tint sáng trên nền tối.
+Trên nền tối, hãy đặt `toolbarTintColor` màu sáng. `tintColor` của từng nút phải là màu thường: `PlatformColor` và `DynamicColorIOS` bị bỏ qua ở đây (có cảnh báo khi chạy development).
 
 ## Menu overflow {#overflow}
 
@@ -105,10 +106,10 @@ Khi các nút không vừa, những nút thừa sẽ chuyển vào menu "…" �
 - Nút chỉ có icon chiếm một ô rộng 44; nút có chữ được đo theo nội dung.
 - **iOS 14+** mở menu native với icon và nhãn của từng mục; iOS cũ hơn hiện action sheet.
 - **Android** mở `PopupMenu` chỉ có nhãn. Nó theo light mode và dark mode.
-- Mục trong menu dùng `accessibilityLabel` của nút, mặc định là `text` rồi đến `id`. Vì thế `{ id: 'undo' }` trơn sẽ hiện là "undo" trong menu. Hãy đặt `text` hoặc `accessibilityLabel` cho các nút có thể bị đẩy vào overflow.
+- Mục trong menu dùng `accessibilityLabel` của nút, mặc định là `text`, sau đó là "Undo", "Redo", "Clear" hoặc "Copy" với các id có sẵn, cuối cùng là `id`.
 
-Accessibility label của nút overflow là "More" và chưa được bản địa hoá.
+Accessibility label của nút overflow là "More". Đặt `toolbarOverflowLabel` để bản địa hoá.
 
 ## Accessibility {#accessibility}
 
-Nút icon có kích thước 44×44 và nút chữ cao 44, đạt kích thước vùng chạm thông dụng. Mỗi nút cung cấp `accessibilityLabel` của nó, và nút `disabled` được báo là bị vô hiệu hoá. Khi không truyền `toolbarButtons`, các nút mặc định có nhãn "Undo", "Redo", "Clear" và "Copy". Khi bạn truyền danh sách riêng, nhãn lấy từ `accessibilityLabel`, `text` hoặc `id`, nên hãy đặt nhãn dễ đọc bằng ngôn ngữ của app cho các nút có sẵn.
+Nút icon có kích thước 44×44 và nút chữ cao 44, đạt kích thước vùng chạm thông dụng. Mỗi nút cung cấp `accessibilityLabel` của nó, và nút `disabled` được báo là bị vô hiệu hoá. Khi không truyền `toolbarButtons`, các nút mặc định có nhãn "Undo", "Redo", "Clear" và "Copy". Khi bạn truyền danh sách riêng, nhãn lấy từ `accessibilityLabel` hoặc `text`, sau đó là các nhãn tiếng Anh mặc định trên với id có sẵn, cuối cùng là `id`. Hãy đặt nhãn theo ngôn ngữ của app nếu app không dùng tiếng Anh.

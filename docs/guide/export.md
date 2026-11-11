@@ -69,7 +69,7 @@ const svg = await ref.current?.toSvg();
 The SVG contains one `<path>` per stroke, built from the stroke's points as straight segments, with the stroke color as a hex value and round caps and joins. The `viewBox` is cropped to the strokes. Keep in mind:
 
 - **Each path has a single width.** On iOS it is the average width of the stroke's points; on Android it is the midpoint of `penMinWidth` and `penMaxWidth`. The thick and thin parts of the on-screen ink are not reproduced.
-- **Units differ.** iOS uses points; Android uses physical pixels, so the numbers in an Android SVG are larger on high-density screens. Scale the SVG through its `viewBox` rather than relying on its `width` and `height`.
+- **Units are density-independent.** iOS uses points and Android uses dp, the same units as `getStrokeData()`. Before 1.1.4, Android SVGs were in physical pixels.
 - On Android a single tap (a dot) becomes a `<circle>`.
 - Colors are written without alpha.
 

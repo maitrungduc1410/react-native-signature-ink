@@ -43,7 +43,9 @@ An empty canvas gives `[]`. The fields mean slightly different things per platfo
 
 Because points and dp are both density-independent, a drawing saved on one device lines up on another of the same size. Data moves between platforms too, but the result will not look identical: iOS uses `size` for the width, Android recomputes the width from the time between points.
 
-Only compare `t` values within one stroke. The absolute numbers are not meaningful.
+Only compare `t` values within one stroke. The absolute numbers are not meaningful. `setStrokeData` accepts both units on both platforms: a stroke whose `t` values are all integers is read as milliseconds, otherwise as seconds.
+
+Android data saved with version 1.1.2 or earlier stored `x` and `y` in physical pixels. Divide them by `PixelRatio.get()` before passing them to `setStrokeData`, or the drawing comes back scaled up.
 
 ## Restoring {#restoring}
 

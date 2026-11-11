@@ -69,8 +69,10 @@ export interface StrokePoint {
   y: number;
   /**
    * Timestamp: on iOS this is the PencilKit `timeOffset` (seconds since
-   * stroke creation). On Android this is the absolute `MotionEvent.eventTime`
-   * (millisecond uptime). Only the relative deltas matter for replay.
+   * stroke creation). On Android this is an absolute time in milliseconds.
+   * Only the relative deltas within a stroke matter. `setStrokeData`
+   * accepts either form on both platforms: a stroke whose `t` values are
+   * all integers is read as milliseconds, otherwise as seconds.
    */
   t: number;
   /** iOS only. Force at this sample, in PencilKit's normalized 0..1 range. */
@@ -292,14 +294,18 @@ export interface SignatureInkProps {
    * visible count is computed at layout time from the available width.
    */
   toolbarMaxVisibleButtons?: number;
+  /**
+   * Accessibility label for the overflow ("…") button, read by
+   * VoiceOver / TalkBack. Set it to localize the button. Defaults to
+   * `"More"`.
+   */
+  toolbarOverflowLabel?: string;
   /** Toolbar fill color. Defaults to transparent. */
   toolbarBackgroundColor?: ColorValue;
   /**
    * Color applied to the toolbar icons (SF Symbols on iOS, vector
    * drawables on Android). When omitted, iOS uses the view's tint color
-   * and Android draws each icon in its own drawable color (black for
-   * undo / redo / clear / copy, white for the others and the overflow
-   * button), so set it explicitly when you use custom icons on Android.
+   * and Android draws the icons black.
    */
   toolbarTintColor?: ColorValue;
   /**
@@ -397,7 +403,7 @@ export interface SignatureInkHandle {
   /**
    * Resolves with an SVG document representing the current strokes, one
    * `<path>` per stroke, cropped to the strokes' bounds. Coordinates are
-   * points on iOS and physical pixels on Android.
+   * points on iOS and dp on Android, so both match `getStrokeData`.
    */
   toSvg: () => Promise<string>;
   /** Resolves with a JSON-serializable copy of the strokes. */

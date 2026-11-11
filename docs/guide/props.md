@@ -73,6 +73,7 @@ When the [toolbar](/guide/toolbar) is visible, the baseline sits on the edge bet
 | `toolbarPosition` | `'top' \| 'bottom'` | `'bottom'` |
 | `toolbarButtons` | `ToolbarItem[]` | undo, redo, clear, copy |
 | `toolbarMaxVisibleButtons` | `number` | `0` (fit to width) |
+| `toolbarOverflowLabel` | `string` | `'More'` |
 | `toolbarBackgroundColor` | `ColorValue` | `transparent` |
 | `toolbarTintColor` | `ColorValue` | see [Toolbar](/guide/toolbar#colors) |
 | `toolbarHeight` | `number` | iOS: `44`, Android: `48` |

@@ -20,6 +20,7 @@ description: "配置 SignatureInk 原生工具栏：内置撤销、重做、清�
 | `toolbarPosition` | `'top' \| 'bottom'` | `'bottom'` | |
 | `toolbarButtons` | `ToolbarItem[]` | undo、redo、clear、copy | 保持传入顺序。 |
 | `toolbarMaxVisibleButtons` | `number` | `0` | 直接显示的按钮数量上限。`0` 表示在宽度允许的范围内尽量多显示。 |
+| `toolbarOverflowLabel` | `string` | `'More'` | “…”按钮的无障碍标签。 |
 | `toolbarBackgroundColor` | `ColorValue` | `transparent` | |
 | `toolbarTintColor` | `ColorValue` | 平台默认 | 图标和文字的颜色。见[颜色](#colors)。 |
 | `toolbarHeight` | `number` | iOS：`44`，Android：`48` | 图标上下的间距为 `(toolbarHeight - 图标高度) / 2`。 |
@@ -94,9 +95,9 @@ id 应当唯一。两个相同 id 的按钮在 `onToolbarAction` 中无法区分
 不设置 `toolbarTintColor` 时，两个平台的外观不同：
 
 - **iOS** 使用视图的 tint color（除非应用修改过，否则为系统蓝）。
-- **Android** 按每个图标自身的颜色绘制：undo、redo、clear 和 copy 为黑色，而 save、share、download、check 以及溢出按钮为**白色**。文字标签使用主题的按钮文字颜色。
+- **Android** 将图标绘制为黑色。文字标签使用主题的按钮文字颜色。
 
-因此在 Android 上，如果不设置着色，自定义图标和“…”按钮在浅色背景上是看不见的。只要使用了自定义图标或溢出菜单，就请设置 `toolbarTintColor`；在深色背景上请选择浅色。
+在深色背景上，请设置浅色的 `toolbarTintColor`。单个按钮的 `tintColor` 必须是普通颜色：`PlatformColor` 和 `DynamicColorIOS` 在这里会被忽略（开发模式下会给出警告）。
 
 ## 溢出菜单 {#overflow}
 
@@ -105,10 +106,10 @@ id 应当唯一。两个相同 id 的按钮在 `onToolbarAction` 中无法区分
 - 纯图标按钮占用 44 宽的位置；带文字的按钮按实际内容测量。
 - **iOS 14+** 打开原生菜单，每项显示图标和标签；更早的 iOS 版本显示操作表。
 - **Android** 打开只显示标签的 `PopupMenu`，并跟随浅色和深色模式。
-- 菜单项使用按钮的 `accessibilityLabel`，默认取 `text`，其次取 `id`。因此一个只有 `{ id: 'undo' }` 的按钮在菜单中会显示为“undo”。对可能进入溢出菜单的按钮，请设置 `text` 或 `accessibilityLabel`。
+- 菜单项使用按钮的 `accessibilityLabel`，默认取 `text`；内置 id 其次取“Undo”“Redo”“Clear”或“Copy”；最后取 `id`。
 
-溢出按钮的无障碍标签为“More”，目前没有本地化。
+溢出按钮的无障碍标签为“More”。可通过 `toolbarOverflowLabel` 进行本地化。
 
 ## 无障碍 {#accessibility}
 
-图标按钮尺寸为 44×44，文字按钮高 44，满足常见的触控区域要求。每个按钮都会提供其 `accessibilityLabel`，`disabled` 的按钮会被报告为不可用。不传 `toolbarButtons` 时，默认按钮的标签为“Undo”“Redo”“Clear”和“Copy”。传入自定义列表时，标签取自 `accessibilityLabel`、`text` 或 `id`，因此请为内置按钮设置符合应用语言的易读标签。
+图标按钮尺寸为 44×44，文字按钮高 44，满足常见的触控区域要求。每个按钮都会提供其 `accessibilityLabel`，`disabled` 的按钮会被报告为不可用。不传 `toolbarButtons` 时，默认按钮的标签为“Undo”“Redo”“Clear”和“Copy”。传入自定义列表时，标签取自 `accessibilityLabel` 或 `text`，内置 id 其次使用上述英文默认标签，最后取 `id`。如果应用不是英文界面，请设置对应语言的标签。

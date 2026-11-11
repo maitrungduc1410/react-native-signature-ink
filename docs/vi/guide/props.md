@@ -73,6 +73,7 @@ Khi [toolbar](/vi/guide/toolbar) hiện, đường kẻ nằm ngay ranh giới g
 | `toolbarPosition` | `'top' \| 'bottom'` | `'bottom'` |
 | `toolbarButtons` | `ToolbarItem[]` | undo, redo, clear, copy |
 | `toolbarMaxVisibleButtons` | `number` | `0` (vừa với chiều rộng) |
+| `toolbarOverflowLabel` | `string` | `'More'` |
 | `toolbarBackgroundColor` | `ColorValue` | `transparent` |
 | `toolbarTintColor` | `ColorValue` | xem [Toolbar](/vi/guide/toolbar#colors) |
 | `toolbarHeight` | `number` | iOS: `44`, Android: `48` |

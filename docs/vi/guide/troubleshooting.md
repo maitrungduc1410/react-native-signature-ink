@@ -11,18 +11,6 @@ description: "Cách xử lý các lỗi thường gặp với SignatureInk: khô
 - **Mực trùng màu nền.** Bút mặc định màu đen (iOS) hoặc `#111111` (Android) và không đổi theo dark mode. Hãy đặt `penColor` cho nền tối. Xem [Nền tối](/vi/guide/quick-start#dark-backgrounds).
 - **New Architecture đang tắt.** Thư viện chỉ cung cấp Fabric component. Xem [Cài đặt](/vi/guide/installation#requirements).
 
-## Icon toolbar vô hình trên Android {#invisible-icons}
-
-Khi không có `toolbarTintColor`, Android vẽ save, share, download, check và nút overflow "…" màu trắng. Hãy đặt `toolbarTintColor` (hoặc `tintColor` cho từng nút) thành màu tương phản với nền. Xem [Màu toolbar](/vi/guide/toolbar#colors).
-
-## Menu overflow hiện "undo" chữ thường {#overflow-labels}
-
-Mục trong menu dùng `accessibilityLabel`, nếu không có thì lấy `text` rồi đến `id`. Hãy đặt `text` hoặc `accessibilityLabel` cho các nút có thể bị đẩy vào overflow:
-
-```tsx
-toolbarButtons={[{ id: 'undo', accessibilityLabel: 'Hoàn tác' }]}
-```
-
 ## "SignatureInk: native view is not mounted yet" {#not-mounted}
 
 Một phương thức trả về Promise (`toBase64`, `toFile`, `toSvg`, `getStrokeData`, `isEmpty`, `saveToPhotoLibrary`) bị gọi trước khi native view tồn tại. Hãy gọi nó từ một handler sự kiện hoặc sau khi component đã mount, và dùng optional chaining trên ref.
@@ -44,7 +32,7 @@ Phía native không tạo được ảnh. Trên Android điều này xảy ra kh
 
 ## Ảnh xuất trên iOS và Android trông khác nhau {#exports-differ}
 
-Phần lớn là do thiết kế. PNG trên iOS luôn trong suốt nhưng trên Android có `backgroundColor`, lề khi trim khác nhau, và đơn vị SVG là point trên iOS, pixel trên Android. Danh sách đầy đủ có ở [iOS và Android](/vi/guide/platform-differences#exports).
+Phần lớn là do thiết kế. PNG trên iOS luôn trong suốt nhưng trên Android có `backgroundColor`, lề khi trim khác nhau, và độ dày nét trong SVG được tính khác nhau. Danh sách đầy đủ có ở [iOS và Android](/vi/guide/platform-differences#exports).
 
 ## Nét khôi phục bị sai màu {#restored-color}
 

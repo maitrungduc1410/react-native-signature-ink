@@ -92,6 +92,10 @@ import UniformTypeIdentifiers
   @objc public var toolbarMaxVisibleButtons: Int = 0 {
     didSet { invalidateToolbar() }
   }
+  /// Accessibility label of the overflow button. Empty = "More".
+  @objc public var toolbarOverflowLabel: String = "" {
+    didSet { invalidateToolbar() }
+  }
   @objc public var toolbarBackgroundColor: UIColor? {
     didSet { toolbar?.layer.backgroundColor = (toolbarBackgroundColor ?? .clear).cgColor }
   }
@@ -305,6 +309,7 @@ import UniformTypeIdentifiers
     toolbarPosition = "bottom"
     toolbarItemsJson = ""
     toolbarMaxVisibleButtons = 0
+    toolbarOverflowLabel = ""
     toolbarBackgroundColor = nil
     toolbarTintColor = nil
     toolbarHeight = 44
@@ -487,10 +492,11 @@ import UniformTypeIdentifiers
     for obj in array {
       guard let id = obj["id"] as? String, !id.isEmpty else { continue }
       let icon = obj["icon"] as? String
-      let text = obj["text"] as? String
+      // "" counts as no text, matching Android, so the built-in icon fallback applies.
+      let text = (obj["text"] as? String).flatMap { $0.isEmpty ? nil : $0 }
       var tint: UIColor?
       if let n = obj["tintColor"] as? NSNumber { tint = colorFromARGB(n.int64Value) }
-      let label = (obj["accessibilityLabel"] as? String) ?? text ?? id
+      let label = (obj["accessibilityLabel"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? text ?? id
       let disabled = (obj["disabled"] as? Bool) ?? false
       items.append(ToolbarItemModel(id: id, icon: icon, text: text, tintColor: tint, accessibilityLabel: label, disabled: disabled))
     }
@@ -655,7 +661,7 @@ import UniformTypeIdentifiers
       button.setTitle("…", for: .normal)
     }
     if let tint = toolbarTintColor { button.tintColor = tint }
-    button.accessibilityLabel = "More"
+    button.accessibilityLabel = toolbarOverflowLabel.isEmpty ? "More" : toolbarOverflowLabel
     button.accessibilityIdentifier = "signature-ink-overflow"
     button.translatesAutoresizingMaskIntoConstraints = false
     button.widthAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
@@ -679,7 +685,7 @@ import UniformTypeIdentifiers
       button.showsMenuAsPrimaryAction = true
     } else {
       let target = ToolbarButtonTarget(action: "") { [weak self] _ in
-        self?.presentOverflowSheet(items: items)
+        self?.presentOverflowSheet(items: items, from: button)
       }
       button.addTarget(target, action: #selector(ToolbarButtonTarget.fire), for: .touchUpInside)
       objc_setAssociatedObject(button, &ToolbarButtonTarget.assocKey, target, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
@@ -687,8 +693,11 @@ import UniformTypeIdentifiers
     return button
   }
 
-  private func presentOverflowSheet(items: [ToolbarItemModel]) {
+  private func presentOverflowSheet(items: [ToolbarItemModel], from anchor: UIView) {
     let sheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+    // iPad presents action sheets as popovers and raises if no anchor is set.
+    sheet.popoverPresentationController?.sourceView = anchor
+    sheet.popoverPresentationController?.sourceRect = anchor.bounds
     for item in items where !item.disabled {
       sheet.addAction(UIAlertAction(title: item.accessibilityLabel, style: .default) { [weak self] _ in
         self?.handleToolbarAction(item.id)
@@ -1304,10 +1313,17 @@ import UniformTypeIdentifiers
     let now = Date()
     for points in strokes {
       var controlPoints: [PKStrokePoint] = []
+      // Android writes `t` as integer ms uptime, iOS as fractional seconds
+      // since stroke start. Treat an all-integer stroke as ms and rebase it,
+      // otherwise PencilKit gets timeOffsets in the billions of seconds.
+      let times = points.compactMap { $0["t"] as? Double }
+      let inMillis = !times.isEmpty && times.allSatisfy { $0 == $0.rounded() }
+      let t0 = times.first ?? 0
       for p in points {
         let x = (p["x"] as? Double) ?? 0
         let y = (p["y"] as? Double) ?? 0
-        let t = (p["t"] as? Double) ?? 0
+        let rawT = (p["t"] as? Double) ?? 0
+        let t = inMillis ? max(0, rawT - t0) / 1000 : rawT
         let pressure = (p["pressure"] as? Double) ?? 1.0
         let azimuth = (p["azimuth"] as? Double) ?? 0
         let altitude = (p["altitude"] as? Double) ?? 0

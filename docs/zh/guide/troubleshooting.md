@@ -11,18 +11,6 @@ description: "SignatureInk 常见问题的解决方法：无法绘制、工具�
 - **墨迹与背景同色。** 默认笔色为黑色（iOS）或 `#111111`（Android），不会跟随深色模式变化。深色背景下请设置 `penColor`。见[深色背景](/zh/guide/quick-start#dark-backgrounds)。
 - **未启用新架构。** 本库只提供 Fabric 组件。见[安装](/zh/guide/installation#requirements)。
 
-## Android 上工具栏图标不可见 {#invisible-icons}
-
-未设置 `toolbarTintColor` 时，Android 会把 save、share、download、check 以及“…”溢出按钮绘制为白色。请把 `toolbarTintColor`（或单个按钮的 `tintColor`）设为与背景对比明显的颜色。见[工具栏颜色](/zh/guide/toolbar#colors)。
-
-## 溢出菜单显示小写的“undo” {#overflow-labels}
-
-菜单项使用 `accessibilityLabel`，未设置时依次回退到 `text` 和 `id`。请为可能进入溢出菜单的按钮设置 `text` 或 `accessibilityLabel`：
-
-```tsx
-toolbarButtons={[{ id: 'undo', accessibilityLabel: '撤销' }]}
-```
-
 ## “SignatureInk: native view is not mounted yet” {#not-mounted}
 
 在原生视图存在之前调用了返回 Promise 的方法（`toBase64`、`toFile`、`toSvg`、`getStrokeData`、`isEmpty`、`saveToPhotoLibrary`）。请在事件处理函数中或组件挂载之后调用，并对 ref 使用可选链。
@@ -44,7 +32,7 @@ toolbarButtons={[{ id: 'undo', accessibilityLabel: '撤销' }]}
 
 ## iOS 与 Android 的导出结果不同 {#exports-differ}
 
-这大多是设计使然。iOS 的 PNG 始终透明，Android 的 PNG 则包含 `backgroundColor`；裁剪边距不同；SVG 的单位在 iOS 上是 pt，在 Android 上是像素。完整列表见 [iOS 与 Android 差异](/zh/guide/platform-differences#exports)。
+这大多是设计使然。iOS 的 PNG 始终透明，Android 的 PNG 则包含 `backgroundColor`；裁剪边距不同；SVG 中线宽的计算方式不同。完整列表见 [iOS 与 Android 差异](/zh/guide/platform-differences#exports)。
 
 ## 恢复的笔画颜色不对 {#restored-color}
 

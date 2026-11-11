@@ -52,7 +52,7 @@ Hãy đặt rõ các prop này nếu bạn muốn hai nền tảng trông giốn
 | PNG từ `saveToPhotoLibrary` | Đục, trắng nếu không có `backgroundColor` | `backgroundColor` nếu có, không thì trong suốt |
 | Clipboard | PNG trong suốt đã cắt sát qua `UIPasteboard` | PNG đã cắt sát kèm nền qua URI của `FileProvider` |
 | Lề khi `trim` | 2 pt | 0.6 × `penMaxWidth` dp + 2 px |
-| Đơn vị và độ dày trong SVG | Point, độ dày trung bình mỗi nét | Pixel vật lý, `(penMinWidth + penMaxWidth) / 2` |
+| Đơn vị và độ dày trong SVG | Point, độ dày trung bình mỗi nét | dp, `(penMinWidth + penMaxWidth) / 2` |
 | Nơi lưu của `toFile` | Thư mục tạm | Thư mục cache |
 | Kết quả `saveToPhotoLibrary` | `{ granted }`; `granted: false` khi bị từ chối quyền | `{ granted, uri }`; `granted: false` khi ghi thất bại |
 

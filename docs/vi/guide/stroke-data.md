@@ -43,7 +43,9 @@ Canvas trống cho ra `[]`. Ý nghĩa các trường hơi khác nhau giữa hai 
 
 Vì point và dp đều không phụ thuộc mật độ màn hình, bản vẽ lưu trên thiết bị này sẽ khớp trên thiết bị khác cùng kích thước. Dữ liệu cũng dùng được giữa hai nền tảng, nhưng kết quả sẽ không giống hệt: iOS dùng `size` làm độ dày, còn Android tính lại độ dày từ khoảng thời gian giữa các điểm.
 
-Chỉ so sánh các giá trị `t` trong cùng một nét. Giá trị tuyệt đối không có ý nghĩa.
+Chỉ so sánh các giá trị `t` trong cùng một nét. Giá trị tuyệt đối không có ý nghĩa. `setStrokeData` nhận cả hai đơn vị trên cả hai nền tảng: nét nào có mọi giá trị `t` là số nguyên thì được đọc là mili giây, còn lại là giây.
+
+Dữ liệu Android lưu bằng phiên bản 1.1.2 trở về trước có `x` và `y` tính bằng pixel vật lý. Hãy chia chúng cho `PixelRatio.get()` trước khi truyền vào `setStrokeData`, nếu không bản vẽ sẽ bị phóng to.
 
 ## Khôi phục {#restoring}
 

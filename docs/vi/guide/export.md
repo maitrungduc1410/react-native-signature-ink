@@ -69,7 +69,7 @@ const svg = await ref.current?.toSvg();
 SVG gồm một `<path>` cho mỗi nét, dựng từ các điểm của nét thành những đoạn thẳng, với màu nét ở dạng hex và đầu nét, góc nối bo tròn. `viewBox` được cắt theo các nét. Cần lưu ý:
 
 - **Mỗi path chỉ có một độ dày.** Trên iOS là độ dày trung bình các điểm của nét; trên Android là trung điểm của `penMinWidth` và `penMaxWidth`. Phần đậm nhạt của nét mực trên màn hình không được tái hiện.
-- **Đơn vị khác nhau.** iOS dùng point; Android dùng pixel vật lý, nên các con số trong SVG từ Android lớn hơn trên màn hình mật độ cao. Hãy co giãn SVG qua `viewBox` thay vì dựa vào `width` và `height`.
+- **Đơn vị không phụ thuộc mật độ màn hình.** iOS dùng point, Android dùng dp, cùng đơn vị với `getStrokeData()`. Trước 1.1.4, SVG trên Android tính bằng pixel vật lý.
 - Trên Android, một lần chạm đơn (một chấm) trở thành `<circle>`.
 - Màu được ghi không kèm alpha.
 

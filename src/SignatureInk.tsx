@@ -45,11 +45,28 @@ const parseMaybeJson = <T,>(value: string | undefined, fallback: T): T => {
   }
 };
 
-// Dev-only sanity check: a toolbar action is dispatched purely by `id`,
-// so two items sharing an id render two buttons that both fire the same
-// `onToolbarAction({ id })` (and, for a built-in id, run the native action
-// twice) with no way for the handler to tell them apart. Warn once so the
-// collision is caught in development; release builds skip this entirely.
+// Built-in ids get readable labels (also shown as overflow menu titles)
+// when the item has no `text` or explicit label, matching the native
+// defaults instead of the raw lowercase id.
+const BUILT_IN_LABELS: Readonly<Record<string, string>> = {
+  undo: 'Undo',
+  redo: 'Redo',
+  clear: 'Clear',
+  copy: 'Copy',
+};
+
+// Dev-only warnings are keyed by message so an inline `toolbarButtons`
+// array (new identity every render) does not spam the console.
+const warnedMessages = new Set<string>();
+const warnOnce = (message: string): void => {
+  if (warnedMessages.has(message)) return;
+  warnedMessages.add(message);
+  console.warn(message);
+};
+
+// A toolbar action is dispatched purely by `id`, so two items sharing an
+// id fire the same `onToolbarAction({ id })` (and, for a built-in id, run
+// the native action twice) with no way for the handler to tell them apart.
 const warnOnDuplicateToolbarIds = (items: ReadonlyArray<ToolbarItem>): void => {
   const seen = new Set<string>();
   const duplicates = new Set<string>();
@@ -61,9 +78,9 @@ const warnOnDuplicateToolbarIds = (items: ReadonlyArray<ToolbarItem>): void => {
     const ids = Array.from(duplicates)
       .map((id) => `"${id}"`)
       .join(', ');
-    console.warn(
+    warnOnce(
       `SignatureInk: duplicate toolbarButtons id(s) ${ids}. ` +
-        'Each id should be unique — onToolbarAction is keyed by id and ' +
+        'Each id should be unique: onToolbarAction is keyed by id and ' +
         'cannot distinguish duplicate buttons.'
     );
   }
@@ -71,23 +88,47 @@ const warnOnDuplicateToolbarIds = (items: ReadonlyArray<ToolbarItem>): void => {
 
 // Normalize the public `toolbarButtons` items into the flat JSON shape
 // the native side parses: colors are pre-processed to ints and the
-// accessibility label is derived (text → id) here so neither platform
-// has to. Returns `''` when there are no items, which the native side
-// reads as "use the default undo/redo/clear/copy toolbar".
+// accessibility label is derived (text, built-in label, id) here so
+// neither platform has to. Returns `''` when there are no items, which
+// the native side reads as "use the default undo/redo/clear/copy toolbar".
 const serializeToolbarItems = (
-  items: ReadonlyArray<ToolbarItem> | undefined
+  input: ReadonlyArray<ToolbarItem | string> | undefined
 ): string => {
-  if (items == null || items.length === 0) return '';
-  if (__DEV__) warnOnDuplicateToolbarIds(items);
+  if (input == null || input.length === 0) return '';
+  // Before 1.1.0 `toolbarButtons` was an array of action ids. Keep
+  // accepting that shape instead of silently falling back to defaults.
+  const items: ToolbarItem[] = input.map((item) =>
+    typeof item === 'string' ? ({ id: item } as ToolbarItem) : item
+  );
+  if (__DEV__) {
+    warnOnDuplicateToolbarIds(items);
+    if (input.some((item) => typeof item === 'string')) {
+      warnOnce(
+        'SignatureInk: string entries in toolbarButtons are deprecated. ' +
+          "Pass objects instead, e.g. { id: 'undo' } or DefaultToolbarItems.undo."
+      );
+    }
+  }
   const normalized = items.map((item) => {
     const processed =
       item.tintColor != null ? processColor(item.tintColor) : null;
+    // PlatformColor / DynamicColorIOS process to an object that cannot
+    // cross the JSON boundary; say so instead of dropping it silently.
+    if (__DEV__ && processed != null && typeof processed !== 'number') {
+      warnOnce(
+        `SignatureInk: toolbarButtons item "${item.id}" has a tintColor ` +
+          'that is not a plain color (PlatformColor / DynamicColorIOS). ' +
+          'Per-item tints only support plain colors; it is ignored.'
+      );
+    }
+    const text = item.text || null;
     return {
       id: item.id,
       icon: item.icon ?? null,
-      text: item.text ?? null,
+      text,
       tintColor: typeof processed === 'number' ? processed : null,
-      accessibilityLabel: item.accessibilityLabel ?? item.text ?? item.id,
+      accessibilityLabel:
+        item.accessibilityLabel || text || BUILT_IN_LABELS[item.id] || item.id,
       disabled: item.disabled ?? false,
     };
   });

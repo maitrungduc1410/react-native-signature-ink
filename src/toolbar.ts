@@ -1,8 +1,8 @@
 // Toolbar action ids and icon names, plus ready-made presets.
 //
 // These constants are exported from the library so consumers reference
-// them instead of typing raw strings — `ToolbarAction.Undo` instead of
-// `'undo'` — which keeps ids/icons typo-proof and discoverable.
+// them instead of typing raw strings (`ToolbarAction.Undo` instead of
+// `'undo'`), which keeps ids/icons typo-proof and discoverable.
 
 import type { ColorValue } from 'react-native';
 

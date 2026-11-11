@@ -52,7 +52,7 @@ Android 没有可与 PencilKit 相比的系统墨迹引擎。Android 视图是�
 | `saveToPhotoLibrary` 的 PNG | 不透明，未设置 `backgroundColor` 时为白色 | 设置了 `backgroundColor` 则包含，否则透明 |
 | 剪贴板 | 通过 `UIPasteboard` 写入透明的裁剪 PNG | 通过 `FileProvider` URI 写入带背景的裁剪 PNG |
 | `trim` 边距 | 2 pt | 0.6 × `penMaxWidth` dp + 2 px |
-| SVG 单位与线宽 | pt，每笔取平均宽度 | 物理像素，`(penMinWidth + penMaxWidth) / 2` |
+| SVG 单位与线宽 | pt，每笔取平均宽度 | dp，`(penMinWidth + penMaxWidth) / 2` |
 | `toFile` 位置 | 临时目录 | 缓存目录 |
 | `saveToPhotoLibrary` 结果 | `{ granted }`；拒绝访问时 `granted: false` | `{ granted, uri }`；写入失败时 `granted: false` |
 

@@ -166,6 +166,11 @@ internal class SignatureInkViewManager :
     view?.setToolbarMaxVisibleButtons(value)
   }
 
+  @ReactProp(name = "toolbarOverflowLabel")
+  override fun setToolbarOverflowLabel(view: SignatureInkView?, value: String?) {
+    view?.setToolbarOverflowLabel(value)
+  }
+
   @ReactProp(name = "toolbarBackgroundColor")
   override fun setToolbarBackgroundColor(view: SignatureInkView?, value: Int?) {
     view?.setToolbarBackgroundColor(value ?: Color.TRANSPARENT)

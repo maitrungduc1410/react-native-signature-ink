@@ -73,6 +73,7 @@ description: "SignatureInk 全部 props 及各平台默认值：笔颜色与宽�
 | `toolbarPosition` | `'top' \| 'bottom'` | `'bottom'` |
 | `toolbarButtons` | `ToolbarItem[]` | undo、redo、clear、copy |
 | `toolbarMaxVisibleButtons` | `number` | `0`（按宽度自适应） |
+| `toolbarOverflowLabel` | `string` | `'More'` |
 | `toolbarBackgroundColor` | `ColorValue` | `transparent` |
 | `toolbarTintColor` | `ColorValue` | 见[工具栏](/zh/guide/toolbar#colors) |
 | `toolbarHeight` | `number` | iOS：`44`，Android：`48` |

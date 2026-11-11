@@ -212,6 +212,9 @@ using namespace facebook::react;
     if (oldViewProps.toolbarMaxVisibleButtons != newViewProps.toolbarMaxVisibleButtons) {
         _surface.toolbarMaxVisibleButtons = newViewProps.toolbarMaxVisibleButtons;
     }
+    if (oldViewProps.toolbarOverflowLabel != newViewProps.toolbarOverflowLabel) {
+        _surface.toolbarOverflowLabel = [NSString stringWithUTF8String:newViewProps.toolbarOverflowLabel.c_str()];
+    }
     if (oldViewProps.toolbarBackgroundColor != newViewProps.toolbarBackgroundColor) {
         _surface.toolbarBackgroundColor = RCTUIColorFromSharedColor(newViewProps.toolbarBackgroundColor);
     }

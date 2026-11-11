@@ -132,6 +132,11 @@ export interface NativeProps extends ViewProps {
    * `0` means "compute from available width at layout time".
    */
   toolbarMaxVisibleButtons?: WithDefault<Int32, 0>;
+  /**
+   * Accessibility label of the overflow ("…") button. Empty string means
+   * the native default, `"More"`.
+   */
+  toolbarOverflowLabel?: WithDefault<string, ''>;
   /** Toolbar background fill. */
   toolbarBackgroundColor?: ColorValue;
   /** Toolbar icon tint (SF Symbols on iOS, vector drawables on Android). */

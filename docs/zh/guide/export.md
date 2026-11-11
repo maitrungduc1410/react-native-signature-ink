@@ -69,7 +69,7 @@ const svg = await ref.current?.toSvg();
 SVG 中每一笔对应一个 `<path>`，由该笔的采样点以直线段连接而成，笔画颜色为十六进制值，线帽和连接处为圆角。`viewBox` 按笔画裁剪。需要注意：
 
 - **每个 path 只有一个宽度。** iOS 上为该笔各点宽度的平均值；Android 上为 `penMinWidth` 与 `penMaxWidth` 的中点。屏幕上墨迹的粗细变化不会被还原。
-- **单位不同。** iOS 使用 pt；Android 使用物理像素，因此在高密度屏幕上，Android 生成的 SVG 中的数值更大。请通过 `viewBox` 缩放 SVG，而不要依赖其 `width` 和 `height`。
+- **单位与屏幕密度无关。** iOS 使用 pt，Android 使用 dp，与 `getStrokeData()` 的单位一致。1.1.4 之前，Android 的 SVG 使用物理像素。
 - 在 Android 上，单击（一个点）会变成 `<circle>`。
 - 颜色不包含透明度。
 

@@ -11,18 +11,6 @@ description: "Fixes for common SignatureInk problems: nothing draws, invisible t
 - **The ink matches the background.** The default pen is black (iOS) or `#111111` (Android) and does not follow dark mode. Set `penColor` for dark backgrounds. See [Dark backgrounds](/guide/quick-start#dark-backgrounds).
 - **The New Architecture is off.** The library ships a Fabric component only. See [Installation](/guide/installation#requirements).
 
-## Toolbar icons are invisible on Android {#invisible-icons}
-
-Without `toolbarTintColor`, Android draws save, share, download, check and the "…" overflow button in white. Set `toolbarTintColor` (or `tintColor` per button) to a color that contrasts with your background. See [Toolbar colors](/guide/toolbar#colors).
-
-## Overflow menu shows "undo" in lowercase {#overflow-labels}
-
-Menu entries use `accessibilityLabel`, which falls back to `text` and then to `id`. Give items that may overflow a `text` or an `accessibilityLabel`:
-
-```tsx
-toolbarButtons={[{ id: 'undo', accessibilityLabel: 'Undo' }]}
-```
-
 ## "SignatureInk: native view is not mounted yet" {#not-mounted}
 
 A Promise method (`toBase64`, `toFile`, `toSvg`, `getStrokeData`, `isEmpty`, `saveToPhotoLibrary`) was called before the native view existed. Call it from an event handler or after the component has mounted, and use optional chaining on the ref.
@@ -44,7 +32,7 @@ The native side could not produce an image. On Android this happens when the vie
 
 ## Exports look different on iOS and Android {#exports-differ}
 
-Most of this is by design. PNGs are always transparent on iOS but include `backgroundColor` on Android, trim margins differ, and SVG units are points on iOS and pixels on Android. The full list is on [iOS vs Android](/guide/platform-differences#exports).
+Most of this is by design. PNGs are always transparent on iOS but include `backgroundColor` on Android, trim margins differ, and SVG stroke widths are computed differently. The full list is on [iOS vs Android](/guide/platform-differences#exports).
 
 ## Restored strokes have the wrong color {#restored-color}
 
